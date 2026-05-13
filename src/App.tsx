@@ -237,9 +237,7 @@ function ToSiteButton({ map, className }: { map: L.Map | null; className?: strin
 
 function Sidebar({ map, isMobileExpanded, setIsMobileExpanded }: { map: L.Map | null; isMobileExpanded: boolean; setIsMobileExpanded: (v: boolean) => void }) {
   const [selectedVilla, setSelectedVilla] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<'sat' | 'street' | 'hybrid'>('sat');
-
-  const floorPlans = Array.from({ length: 20 }, (_, i) => i + 1);
+  const floorPlans = Array.from({ length: 48 }, (_, i) => i + 1);
 
   return (
     <div className={`absolute bottom-0 left-0 right-0 md:left-6 md:top-6 md:bottom-6 md:w-[360px] md:rounded-2xl z-[1000] flex flex-col overflow-hidden pointer-events-auto transition-all duration-500 ease-in-out ${isMobileExpanded ? 'h-[90vh]' : 'h-24 md:h-auto'} bg-[#fdfdfb] md:shadow-2xl border-none`}>
@@ -265,38 +263,6 @@ function Sidebar({ map, isMobileExpanded, setIsMobileExpanded }: { map: L.Map | 
           
           <div className="h-px bg-zinc-100 mb-8" />
 
-          {/* View Controls */}
-          <div className="space-y-4 mb-8">
-            <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">View Controls</h3>
-            <div className="flex bg-[#f2f1e6] p-1 rounded-xl">
-              {(['sat', 'street', 'hybrid'] as const).map((mode) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewMode(mode)}
-                  className={`flex-1 py-3 text-[12px] font-medium rounded-lg transition-all ${
-                    viewMode === mode 
-                      ? 'bg-[#637d5b] text-white shadow-md' 
-                      : 'text-zinc-500 hover:text-zinc-700'
-                  } capitalize`}
-                >
-                  {mode === 'sat' ? 'Sat' : mode}
-                </button>
-              ))}
-            </div>
-            
-            <div className="bg-[#fcfbf4] border border-[#f0eee0] p-4 rounded-xl flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-                <Navigation size={18} className="text-[#637d5b] rotate-45" />
-              </div>
-              <div>
-                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Site Entry</p>
-                <p className="text-[13px] font-mono font-medium text-[#3d4a35]">14.95031°N, 74.05325°E</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="h-px bg-zinc-100 mb-8" />
-
           {/* Select Villa Section */}
           <div className="space-y-6">
             <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Select Villa</h3>
@@ -312,6 +278,23 @@ function Sidebar({ map, isMobileExpanded, setIsMobileExpanded }: { map: L.Map | 
                   }`}
                 >
                   {num.toString().padStart(2, '0')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-px bg-zinc-100 mt-8 mb-8" />
+
+          {/* Render Section */}
+          <div className="space-y-6">
+            <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Render</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {["Aerial View", "2 BHK", "3 BHK", "4 BHK"].map((render) => (
+                <button
+                  key={render}
+                  className="py-3 px-2 text-[12px] font-bold border border-zinc-200 rounded-lg hover:border-[#637d5b]/40 hover:text-[#637d5b] transition-all text-zinc-400 bg-white"
+                >
+                  {render}
                 </button>
               ))}
             </div>
@@ -620,12 +603,8 @@ export default function App() {
         </MapContainer>
       </div>
 
-      <div className="absolute bottom-[104px] md:bottom-16 right-4 md:right-6 glass-panel px-4 py-2 rounded-xl text-[9px] font-medium tracking-wide text-zinc-600 z-[1000] pointer-events-none max-w-[160px] md:max-w-[200px] text-right">
+      <div className="absolute bottom-6 right-4 md:right-6 bg-[#3d4a35]/80 backdrop-blur-sm px-4 py-2 rounded-xl text-[9px] font-medium tracking-wide text-white z-[1000] pointer-events-none max-w-[160px] md:max-w-[200px] text-right border border-white/10 shadow-2xl">
         To view the location names, hover over them with your cursor. On mobile, simply tap the location.
-      </div>
-
-      <div className="absolute bottom-[124px] md:bottom-6 right-4 md:right-6 glass-panel px-4 py-2 rounded-full text-[9px] uppercase font-bold tracking-[0.2em] text-brand-primary z-[1000] pointer-events-none hidden md:block">
-        Palms of South Goa • Phase 1
       </div>
     </div>
   );
