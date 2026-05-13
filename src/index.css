@@ -1,17 +1,81 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Cardo:wght@400;700&family=Mulish:wght@200;300;400&display=swap');
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Playfair Display", serif;
-  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Cardo", serif;
+  --font-sans: "Mulish", sans-serif;
+  
+  --color-brand-primary: #257057;
+  --color-brand-deep: #234D3B;
 }
 
 body {
-  @apply bg-zinc-50 text-zinc-900 font-sans antialiased;
+  @apply bg-[#f4f4f4] text-zinc-900 font-sans font-light antialiased;
 }
 
 .glass-panel {
-  @apply bg-white/80 backdrop-blur-md border border-white/20 shadow-lg;
+  @apply backdrop-blur-md shadow-xl transition-all duration-300;
+}
+
+@media (max-width: 768px) {
+  .glass-panel {
+    @apply rounded-t-3xl rounded-b-none;
+  }
+}
+
+.brand-heading {
+  @apply font-serif font-normal tracking-tight;
+}
+
+/* Leaflet Overrides */
+.leaflet-container {
+  font-family: inherit;
+}
+
+.custom-div-icon svg {
+  transition: all 0.2s ease;
+}
+
+.custom-div-icon:hover svg path {
+  fill: #094f39 !important;
+}
+
+.beach-tooltip {
+  background: rgba(244, 246, 252, 0.95) !important;
+  border: 1px solid #094f39 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+  padding: 8px 12px !important;
+  border-radius: 8px !important;
+  text-align: center !important;
+  transition: opacity 0.2s ease;
+}
+
+.highway-tooltip {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  transition: opacity 0.2s ease;
+}
+
+.highway-tooltip::before, .beach-tooltip::before {
+  display: none !important;
+}
+
+.beach-tooltip span {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2px !important;
+}
+
+.boundary-label-goa, .boundary-label-karnataka {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+.boundary-label-goa::before, .boundary-label-karnataka::before {
+  display: none !important;
 }

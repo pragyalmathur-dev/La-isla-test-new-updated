@@ -1,160 +1,349 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   MapContainer, 
   TileLayer, 
-  Polygon, 
   Marker, 
   Popup,
-  ImageOverlay
+  ImageOverlay,
+  Polyline,
+  Tooltip,
+  useMap
 } from 'react-leaflet';
 import L from 'leaflet';
-import { Home, Layers, Info, ChevronRight, Maximize2 } from 'lucide-react';
+import { 
+  Home, 
+  Layers, 
+  Maximize2, 
+  ChevronUp, 
+  ChevronDown, 
+  ChevronLeft, 
+  ChevronRight, 
+  ZoomIn, 
+  ZoomOut, 
+  RotateCw, 
+  RotateCcw,
+  MapPin,
+  Navigation
+} from 'lucide-react';
 
 // South Goa - Exact Site Entry Point
 const ENTRY_POINT: [number, number] = [14.950125, 74.053317];
 const PROPERTY_CENTER: [number, number] = [14.9485, 74.0533];
 
-// Bounds for the Site Plan Image Overlay
-// These are approximate and should be tuned based on the exact image scaling
-const SITE_PLAN_BOUNDS: [[number, number], [number, number]] = [
-  [14.9440, 74.0515], // South West corner
-  [14.9515, 74.0550], // North East corner
+const NH66_PATH: [number, number][] = [
+  [15.050960, 74.022532],
+  [15.048075, 74.024836],
+  [15.047873, 74.025682],
+  [15.047792, 74.026346],
+  [15.047520, 74.026423],
+  [15.046730, 74.025494],
+  [15.046003, 74.025593],
+  [15.045190, 74.025391],
+  [15.044726, 74.025841],
+  [15.042171, 74.026158],
+  [15.036641, 74.030524],
+  [15.035473, 74.030332],
+  [15.031756, 74.033324],
+  [15.026775, 74.033262],
+  [15.020331, 74.033406],
+  [15.016787, 74.035036],
+  [15.012821, 74.037148],
+  [15.006891, 74.038025],
+  [14.998919, 74.040851],
+  [14.999300, 74.040818],
+  [14.997130, 74.041197],
+  [14.995434, 74.041387],
+  [14.994248, 74.042436],
+  [14.993460, 74.043818],
+  [14.991909, 74.047785],
+  [14.991181, 74.048590],
+  [14.990344, 74.049161],
+  [14.988018, 74.049324],
+  [14.984476, 74.049432],
+  [14.983475, 74.049084],
+  [14.982716, 74.048272],
+  [14.981217, 74.046049],
+  [14.980799, 74.045478],
+  [14.980041, 74.044753],
+  [14.979198, 74.044278],
+  [14.979055, 74.044277],
+  [14.978316, 74.044323],
+  [14.976034, 74.045275],
+  [14.971480, 74.047073],
+  [14.967998, 74.048422],
+  [14.964538, 74.049770],
+  [14.962011, 74.050822],
+  [14.960394, 74.051536],
+  [14.958993, 74.052814],
+  [14.957011, 74.055316],
+  [14.957332, 74.054904],
+  [14.956745, 74.055615],
+  [14.956420, 74.055996],
+  [14.956013, 74.056480],
+  [14.955945, 74.056580],
+  [14.955730, 74.056806],
+  [14.955531, 74.057035],
+  [14.955363, 74.057204],
+  [14.955115, 74.057284],
+  [14.954898, 74.057297],
+  [14.954368, 74.057247],
+  [14.954115, 74.057120],
+  [14.953637, 74.056440],
+  [14.953210, 74.055530],
+  [14.952898, 74.054928],
+  [14.952571, 74.054678],
+  [14.952291, 74.054635],
+  [14.951996, 74.054666],
+  [14.951681, 74.054775],
+  [14.951437, 74.054899],
+  [14.950878, 74.055345],
+  [14.950129, 74.055971],
+  [14.949078, 74.056832],
+  [14.947464, 74.058170],
+  [14.946692, 74.058774],
+  [14.946282, 74.058969],
+  [14.945855, 74.059145],
+  [14.945386, 74.059274],
+  [14.944530, 74.059431],
+  [14.938599, 74.060378],
+  [14.940930, 74.060019],
+  [14.930026, 74.061705],
+  [14.929269, 74.062505],
+  [14.929540, 74.063538],
+  [14.931545, 74.065868],
+  [14.931653, 74.066491],
+  [14.931526, 74.067317],
+  [14.931010, 74.067672],
+  [14.929081, 74.068105],
+  [14.927965, 74.068669],
+  [14.927486, 74.069118],
+  [14.924226, 74.074348],
+  [14.923353, 74.075266],
+  [14.919579, 74.077336],
+  [14.918254, 74.078087],
+  [14.916584, 74.080430]
 ];
 
-// Refined Property Boundary based on the long tapering site plan provided
-const PROPERTY_BOUNDARY: [number, number][] = [
-  [14.9505, 74.0530], // Top/North Entry
-  [14.9515, 74.0535], 
-  [14.9500, 74.0545],
-  [14.9480, 74.0555], // Tapering out
-  [14.9455, 74.0552], // Bottom East
-  [14.9445, 74.0535], // Bottom most tip
-  [14.9450, 74.0520], // Bottom West
-  [14.9475, 74.0520],
-  [14.9495, 74.0525],
+const GALGIBAGA_BEACH: [number, number] = [14.961497, 74.048541];
+const TALPONA_BEACH: [number, number] = [14.976814, 74.042358];
+const XANDREM_BEACH: [number, number] = [14.939333, 74.045792];
+const TOLIVIA_BEACH: [number, number] = [14.934657, 74.047156];
+const LALIT_RESORT: [number, number] = [14.991451, 74.042100];
+const CRICKET_GROUND: [number, number] = [14.948755, 74.056363];
+const HIGHER_SECONDARY: [number, number] = [14.948146, 74.056558];
+const HAVANA_BAR: [number, number] = [14.962635, 74.052656];
+const NIRAKAR_HIGH_SCHOOL: [number, number] = [14.960280, 74.055549];
+const CHURCH_ST_ANTHONY: [number, number] = [14.964358, 74.048235];
+const CASA_JAALI: [number, number] = [14.999068, 74.028544];
+const COTIGAO_WILDLIFE: [number, number] = [14.965751, 74.195798];
+const MUDAGERI_FALLS: [number, number] = [14.904467, 74.132291];
+const ZEST_CAFE: [number, number] = [14.998365, 74.033299];
+const ACCESS_ROAD_PATH: [number, number][] = [
+  [14.950220, 74.053487],
+  [14.950326, 74.053734],
+  [14.950404, 74.053942],
+  [14.950486, 74.054136],
+  [14.950596, 74.054340],
+  [14.950712, 74.054538],
+  [14.950819, 74.054747],
+  [14.950895, 74.054915],
+  [14.951028, 74.055109]
 ];
 
-const VILLAS = [
-  // West Row (left side of road in plan)
-  { id: 'v1', name: 'Villa 101', lat: 14.9498, lng: 74.0530, price: 'Rs. 4.2 Cr', status: 'Available' },
-  { id: 'v2', name: 'Villa 102', lat: 14.9494, lng: 74.0532, price: 'Rs. 4.2 Cr', status: 'Available' },
-  { id: 'v3', name: 'Villa 103', lat: 14.9490, lng: 74.0534, price: 'Rs. 4.5 Cr', status: 'Reserved' },
-  { id: 'v4', name: 'Villa 104', lat: 14.9486, lng: 74.0536, price: 'Rs. 4.5 Cr', status: 'Available' },
-  { id: 'v5', name: 'Villa 105', lat: 14.9482, lng: 74.0538, price: 'Rs. 4.8 Cr', status: 'Available' },
-  { id: 'v6', name: 'Villa 106', lat: 14.9478, lng: 74.0540, price: 'Rs. 4.8 Cr', status: 'Reserved' },
-  { id: 'v7', name: 'Villa 107', lat: 14.9474, lng: 74.0542, price: 'Rs. 5.2 Cr', status: 'Available' },
-  
-  // East Row (right side of road in plan)
-  { id: 'v9', name: 'Villa 201', lat: 14.9500, lng: 74.0536, price: 'Rs. 4.1 Cr', status: 'Available' },
-  { id: 'v10', name: 'Villa 202', lat: 14.9496, lng: 74.0538, price: 'Rs. 4.1 Cr', status: 'Available' },
-  { id: 'v11', name: 'Villa 203', lat: 14.9492, lng: 74.0540, price: 'Rs. 4.3 Cr', status: 'Available' },
-  { id: 'v12', name: 'Villa 204', lat: 14.9488, lng: 74.0542, price: 'Rs. 4.3 Cr', status: 'Reserved' },
-  { id: 'v13', name: 'Villa 205', lat: 14.9484, lng: 74.0544, price: 'Rs. 4.6 Cr', status: 'Available' },
-  { id: 'v14', name: 'Villa 206', lat: 14.9480, lng: 74.0546, price: 'Rs. 4.6 Cr', status: 'Available' },
-  
-  // Signature units at the bottom
-  { id: 'v16', name: 'Elite Signature A', lat: 14.9465, lng: 74.0538, price: 'Rs. 7.5 Cr', status: 'Available' },
-  { id: 'v17', name: 'Elite Signature B', lat: 14.9460, lng: 74.0534, price: 'Rs. 7.8 Cr', status: 'Available' },
-  { id: 'pool', name: 'Infinity Pool & Spa', lat: 14.9455, lng: 74.0545, price: 'Amenity', status: 'Amenity' },
-  { id: 'ch', name: 'The Clubhouse', lat: 14.9470, lng: 74.0530, price: 'Amenity', status: 'Amenity' },
+const STATE_BOUNDARY_PATH: [number, number][] = [
+  [14.900215, 74.085037],
+  [14.902114, 74.087173],
+  [14.902897, 74.087784],
+  [14.903445, 74.088193],
+  [14.903439, 74.090275],
+  [14.910986, 74.094491],
+  [14.915798, 74.101614],
+  [14.912912, 74.104792],
+  [14.914191, 74.107340],
+  [14.913965, 74.108513]
 ];
 
-// Helper to create custom markers using Leaflet's divIcon
-const createCustomMarker = (status: string) => {
-  let color = '#10b981'; // Green
-  if (status === 'Reserved') color = '#ef4444'; // Red
-  if (status === 'Amenity') color = '#3b82f6'; // Blue for Amenities
-  return L.divIcon({
-    className: 'custom-div-icon',
-    html: `<div style="background-color: ${color}; width: 14px; height: 14px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-};
+// Helper to create custom labels if needed in future
+const entryLabel = L.divIcon({
+  className: 'entry-point-icon',
+  html: '<div style="background-color: #257057; width: 14px; height: 14px; border: 2px solid white; border-radius: 2px; transform: rotate(45deg); box-shadow: 0 0 10px rgba(37,112,87,0.7);"></div>',
+  iconSize: [14, 14],
+  iconAnchor: [7, 7],
+});
 
-function Sidebar() {
-  const projectFeatures = [
-    "Private Beach Access",
-    "Smart Home Integration",
-    "Infinity Pool",
-    "24/7 Concierge"
-  ];
+const beachPin = L.divIcon({
+  className: 'custom-div-icon',
+  html: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 21.7C12 21.7 20 15.4 20 10C20 5.58172 16.4183 2 12 2C7.58172 2 4 5.58172 4 10C4 15.4 12 21.7 12 21.7Z" fill="#094f39" stroke="white" stroke-width="2"/>
+    <circle cx="12" cy="10" r="3" fill="white"/>
+  </svg>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 24],
+});
+
+
+// Custom component to handle image rotation since Leaflet doesn't support it natively
+function RotatingImageOverlay({ url, bounds, opacity, rotation }: { 
+  url: string, 
+  bounds: L.LatLngBoundsExpression, 
+  opacity: number, 
+  rotation: number 
+}) {
+  const overlayRef = useRef<L.ImageOverlay>(null);
+
+  useEffect(() => {
+    if (overlayRef.current) {
+      const img = overlayRef.current.getElement();
+      if (img) {
+        img.style.transform = `${img.style.transform.split('rotate')[0]} rotate(${rotation}deg)`;
+      }
+    }
+  }, [rotation, bounds]);
 
   return (
-    <div className="absolute left-6 top-6 bottom-6 w-80 glass-panel rounded-2xl z-[1000] flex flex-col overflow-hidden pointer-events-auto">
-      <div className="p-6 border-b border-zinc-100">
-        <div className="flex items-center gap-2 text-orange-600 mb-1">
-          <Home size={18} />
-          <span className="text-[10px] uppercase font-bold tracking-widest">Premium Estate</span>
+    <ImageOverlay
+      ref={overlayRef}
+      url={url}
+      bounds={bounds}
+      opacity={opacity}
+    />
+  );
+}
+
+function MapRef({ onMap }: { onMap: (map: L.Map) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    onMap(map);
+  }, [map, onMap]);
+  return null;
+}
+
+function ToSiteButton({ map, className }: { map: L.Map | null; className?: string }) {
+  return (
+    <button 
+      onClick={() => map?.flyTo(PROPERTY_CENTER, 18)}
+      className={`flex items-center justify-center gap-3 w-full py-4 bg-[#637d5b] hover:bg-[#52694b] text-white rounded-lg transition-all shadow-lg hover:shadow-xl group mb-6 ${className}`}
+    >
+      <div className="relative w-4 h-4">
+        <div className="absolute top-0 left-0 w-1.5 h-1.5 border-t-2 border-l-2 border-white/80" />
+        <div className="absolute top-0 right-0 w-1.5 h-1.5 border-t-2 border-r-2 border-white/80" />
+        <div className="absolute bottom-0 left-0 w-1.5 h-1.5 border-b-2 border-l-2 border-white/80" />
+        <div className="absolute bottom-0 right-0 w-1.5 h-1.5 border-b-2 border-r-2 border-white/80" />
+      </div>
+      <span className="text-[14px] font-bold uppercase tracking-[0.2em] whitespace-nowrap">To Site</span>
+    </button>
+  );
+}
+
+function Sidebar({ map, isMobileExpanded, setIsMobileExpanded }: { map: L.Map | null; isMobileExpanded: boolean; setIsMobileExpanded: (v: boolean) => void }) {
+  const [selectedVilla, setSelectedVilla] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<'sat' | 'street' | 'hybrid'>('sat');
+
+  const floorPlans = Array.from({ length: 20 }, (_, i) => i + 1);
+
+  return (
+    <div className={`absolute bottom-0 left-0 right-0 md:left-6 md:top-6 md:bottom-6 md:w-[360px] md:rounded-2xl z-[1000] flex flex-col overflow-hidden pointer-events-auto transition-all duration-500 ease-in-out ${isMobileExpanded ? 'h-[90vh]' : 'h-24 md:h-auto'} bg-[#fdfdfb] md:shadow-2xl border-none`}>
+      {/* Brand Header */}
+      <div className="p-6 pb-2 md:p-8 md:pb-4 shrink-0 bg-white border-b border-zinc-100">
+        <div className="flex justify-between items-start mb-1">
+          <h1 className="text-[28px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase">La Isla</h1>
+          <button 
+            onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+            className="md:hidden text-zinc-400 p-1"
+          >
+            <div className="w-5 h-0.5 bg-zinc-400 mb-1" />
+            <div className="w-5 h-0.5 bg-zinc-400" />
+          </button>
         </div>
-        <h1 className="text-3xl font-serif italic text-zinc-900 leading-tight">Palms of South Goa</h1>
-        <p className="text-sm text-zinc-500 mt-2 font-medium">Interactive Site Plan Showcase</p>
+        <p className="text-[10px] md:text-[11px] font-medium tracking-[0.1em] text-zinc-400 uppercase">Architectural Planning & Floor Plans</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+      <div className="flex-1 overflow-y-auto px-6 md:px-8 py-6 space-y-10 scrollbar-hide">
+        {/* To Site Section */}
         <div>
-          <h2 className="text-[11px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-2 mb-4">
-            <Info size={12} />
-            Project Overview
-          </h2>
-          <p className="text-zinc-600 text-sm leading-relaxed italic">
-            "A sanctuary of refined living, where the Arabian Sea meets the lush landscapes of South Goa."
-          </p>
-          <div className="mt-4 grid grid-cols-2 gap-2">
-            {projectFeatures.map((f, i) => (
-              <div key={i} className="text-[10px] bg-zinc-100 text-zinc-600 px-2 py-1 rounded-md flex items-center gap-1">
-                <div className="w-1 h-1 bg-orange-400 rounded-full" />
-                {f}
-              </div>
-            ))}
-          </div>
-        </div>
+          <ToSiteButton map={map} />
+          
+          <div className="h-px bg-zinc-100 mb-8" />
 
-        <div>
-          <h2 className="text-[11px] uppercase font-bold text-zinc-400 tracking-wider flex items-center gap-2 mb-4">
-            <Layers size={12} />
-            Available Units
-          </h2>
-          <div className="space-y-3">
-            {VILLAS.map(v => (
-              <div key={v.id} className="flex items-center justify-between p-3 rounded-xl border border-zinc-100 hover:border-orange-200 transition-colors cursor-pointer group bg-zinc-50/50">
-                <div>
-                  <h4 className="text-sm font-medium text-zinc-800">{v.name}</h4>
-                  <p className="text-[10px] text-zinc-500">{v.price}</p>
-                </div>
-                <ChevronRight size={14} className="text-zinc-300 group-hover:text-orange-500 transition-colors" />
+          {/* View Controls */}
+          <div className="space-y-4 mb-8">
+            <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">View Controls</h3>
+            <div className="flex bg-[#f2f1e6] p-1 rounded-xl">
+              {(['sat', 'street', 'hybrid'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  className={`flex-1 py-3 text-[12px] font-medium rounded-lg transition-all ${
+                    viewMode === mode 
+                      ? 'bg-[#637d5b] text-white shadow-md' 
+                      : 'text-zinc-500 hover:text-zinc-700'
+                  } capitalize`}
+                >
+                  {mode === 'sat' ? 'Sat' : mode}
+                </button>
+              ))}
+            </div>
+            
+            <div className="bg-[#fcfbf4] border border-[#f0eee0] p-4 rounded-xl flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+                <Navigation size={18} className="text-[#637d5b] rotate-45" />
               </div>
-            ))}
+              <div>
+                <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-0.5">Site Entry</p>
+                <p className="text-[13px] font-mono font-medium text-[#3d4a35]">14.95031°N, 74.05325°E</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-px bg-zinc-100 mb-8" />
+
+          {/* Select Villa Section */}
+          <div className="space-y-6">
+            <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Select Villa</h3>
+            <div className="grid grid-cols-5 gap-3">
+              {floorPlans.map((num) => (
+                <button
+                  key={num}
+                  onClick={() => setSelectedVilla(num === selectedVilla ? null : num)}
+                  className={`aspect-square flex items-center justify-center text-[13px] font-bold rounded-lg border transition-all ${
+                    selectedVilla === num
+                      ? 'bg-[#637d5b] border-[#637d5b] text-white shadow-lg scale-110 z-10'
+                      : 'bg-white border-zinc-200 text-zinc-300 hover:border-[#637d5b]/40 hover:text-[#637d5b]'
+                  }`}
+                >
+                  {num.toString().padStart(2, '0')}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="p-4 bg-zinc-900 text-white">
-        <button className="w-full py-3 bg-orange-600 hover:bg-orange-700 transition-colors rounded-xl font-medium text-sm flex items-center justify-center gap-2">
-          Contact Sales Team
-          <ChevronRight size={16} />
-        </button>
+      {/* Footer Branding */}
+      <div className="p-6 bg-[#f2f1e6] shrink-0 text-center">
+        <p className="text-[10px] font-bold tracking-[0.2em] text-[#637d5b]/60 uppercase">Project Visualization Layer</p>
       </div>
     </div>
   );
 }
 
 export default function App() {
-  const [showOverlay, setShowOverlay] = useState(true);
+  const [map, setMap] = useState<L.Map | null>(null);
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const [showOverlay] = useState(true);
+  const [overlayOpacity] = useState(1);
+  const [rotation] = useState(0);
+  const [bounds] = useState<[[number, number], [number, number]]>([
+    [14.947065895146313, 74.05147805773494],
+    [14.950834104853687, 74.05402194226501]
+  ]);
 
   return (
-    <div className="relative h-screen w-full bg-zinc-100 overflow-hidden">
-      <Sidebar />
+    <div className="relative h-screen w-full bg-[#f4f4f4] overflow-hidden">
+      <Sidebar map={map} isMobileExpanded={isMobileExpanded} setIsMobileExpanded={setIsMobileExpanded} />
       
-      <div className="absolute right-6 top-6 z-[1000] flex flex-col gap-2 pointer-events-auto">
-        <button 
-          onClick={() => setShowOverlay(!showOverlay)}
-          className={`glass-panel w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${showOverlay ? 'text-orange-600' : 'text-zinc-700'}`}
-          title="Toggle Site Plan Overlay"
-        >
-          <Layers size={20} />
-        </button>
-        <button className="glass-panel w-10 h-10 rounded-xl flex items-center justify-center text-zinc-700 hover:text-orange-600 transition-colors">
+      <div className="absolute right-4 top-4 md:right-6 md:top-6 z-[1000] flex flex-col gap-2 pointer-events-auto">
+        <button className="glass-panel w-10 h-10 rounded-xl flex items-center justify-center text-zinc-700 hover:text-brand-primary transition-colors">
           <Maximize2 size={20} />
         </button>
       </div>
@@ -162,73 +351,281 @@ export default function App() {
       <div className="h-full w-full">
         <MapContainer 
           center={PROPERTY_CENTER} 
-          zoom={17} 
+          zoom={18} 
           scrollWheelZoom={true}
           style={{ height: '100%', width: '100%' }}
           zoomControl={false}
         >
-          {/* Using a free satellite-style tile layer from Esri via Leaflet */}
           <TileLayer
-            attribution='&copy; <a href="https://www.esri.com/">Esri</a> &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+            attribution='&copy; ESRI'
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
           />
+          <MapRef onMap={setMap} />
           
-          {/* Super-imposed site plan */}
           {showOverlay && (
-            <ImageOverlay
+            <RotatingImageOverlay
               url="/site-plan.png" 
-              bounds={SITE_PLAN_BOUNDS}
-              opacity={0.8}
+              bounds={bounds}
+              opacity={overlayOpacity}
+              rotation={rotation}
             />
           )}
-          
-          <Polygon 
-            positions={PROPERTY_BOUNDARY} 
-            pathOptions={{ 
-              color: '#F27D26', 
-              fillColor: 'transparent', 
-              weight: 2,
-              dashArray: '5, 10'
-            }} 
-          />
 
-          <Marker 
-            position={ENTRY_POINT}
-            icon={L.divIcon({
-              className: 'entry-point-icon',
-              html: '<div style="background-color: #F27D26; width: 14px; height: 14px; border: 2px solid white; border-radius: 2px; transform: rotate(45deg); box-shadow: 0 0 10px rgba(242,125,38,0.5);"></div>',
-              iconSize: [14, 14],
-              iconAnchor: [7, 7],
-            })}
-          >
-            <Popup>Main Site Entry Point<br/>14.950125, 74.053317</Popup>
+          {/* Galgibaga Beach Pinpoint */}
+          <Marker position={GALGIBAGA_BEACH} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Galgibaga Beach</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">4 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1.8 KM Away</span>
+              </span>
+            </Tooltip>
           </Marker>
 
-          {VILLAS.map(villa => (
-            <Marker 
-              key={villa.id} 
-              position={[villa.lat, villa.lng]}
-              icon={createCustomMarker(villa.status)}
-            >
-              <Popup>
-                <div className="p-1 min-w-[150px]">
-                  <h3 className="font-bold text-zinc-900 border-b border-zinc-100 pb-1 mb-1">{villa.name}</h3>
-                  <p className="text-sm text-zinc-600 font-medium">{villa.price}</p>
-                  <span className={`text-[10px] inline-block mt-2 uppercase font-bold px-1.5 py-0.5 rounded-full ${
-                    villa.status === 'Available' ? 'bg-emerald-100 text-emerald-700' : 
-                    villa.status === 'Reserved' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {villa.status}
-                  </span>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          {/* Talpona Beach Pinpoint */}
+          <Marker position={TALPONA_BEACH} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Talpona Beach</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">8 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">4.2 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* Xandrem Beach Pinpoint */}
+          <Marker position={XANDREM_BEACH} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Xandrem Beach</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.2 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* Tolivia Beach Pinpoint */}
+          <Marker position={TOLIVIA_BEACH} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Tolivia Beach</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">3.1 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* The Lalit Golf & Spa Resort Pinpoint */}
+          <Marker position={LALIT_RESORT} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">The Lalit Golf & Spa Resort</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">12 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7.5 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* Havana Bar & Restaurant */}
+          <Marker position={HAVANA_BAR} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Havana Bar & Restaurant</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.1 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* Nirakar Cricket Ground Pinpoint */}
+          <Marker position={CRICKET_GROUND} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Nirakar Cricket Ground</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">0.4 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* S S Angle Higher Secondary School Pinpoint */}
+          <Marker position={HIGHER_SECONDARY} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">S S Angle Higher Secondary School</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">0.3 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+          
+          {/* Nirakar High School Pinpoint */}
+          <Marker position={NIRAKAR_HIGH_SCHOOL} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Nirakar High School</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">3 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1.5 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+          
+          {/* Church of St Anthony of Lisbon Pinpoint */}
+          <Marker position={CHURCH_ST_ANTHONY} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Church of St Anthony of Lisbon</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.8 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+          
+          {/* Casa Jaali (Cafe) Pinpoint */}
+          <Marker position={CASA_JAALI} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Casa Jaali (Cafe)</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">15 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">9.5 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* Cotigao Wildlife Sanctuary Pinpoint */}
+          <Marker position={COTIGAO_WILDLIFE} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Cotigao Wildlife Sanctuary</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">35 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">22 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* Mudageri Falls Pinpoint */}
+          <Marker position={MUDAGERI_FALLS} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Mudageri Falls</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">25 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">14 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* Zest (Cafe & Bar) Pinpoint */}
+          <Marker position={ZEST_CAFE} icon={beachPin}>
+            <Tooltip direction="top" className="beach-tooltip">
+              <span>
+                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Zest (Cafe & Bar)</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">14 Min Drive</span>
+                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7.2 KM Away</span>
+              </span>
+            </Tooltip>
+          </Marker>
+
+          {/* NH 66 Highway */}
+          <Polyline 
+            positions={NH66_PATH} 
+            pathOptions={{ 
+              color: '#f4f6fc', 
+              weight: 4, 
+              opacity: 0.8,
+              dashArray: '1, 0' // Solid line
+            }}
+          />
+
+          {/* NH 66 Label at specific coordinates */}
+          <Marker 
+            position={[14.951625, 74.054830]} 
+            icon={L.divIcon({ className: 'pointer-events-none' })}
+          >
+            <Tooltip permanent direction="top" className="highway-tooltip" offset={[0, 0]}>
+              <span className="bg-[#094f39] text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-lg border border-white/20">NH66</span>
+            </Tooltip>
+          </Marker>
+
+          <Marker 
+            position={[14.993460, 74.043818]} 
+            icon={L.divIcon({ className: 'pointer-events-none' })}
+          >
+            <Tooltip permanent direction="top" className="highway-tooltip" offset={[0, 0]}>
+              <span className="bg-[#094f39] text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-lg border border-white/20">NH66</span>
+            </Tooltip>
+          </Marker>
+
+          <Marker 
+            position={[14.973003, 74.046446]} 
+            icon={L.divIcon({ className: 'pointer-events-none' })}
+          >
+            <Tooltip permanent direction="top" className="highway-tooltip" offset={[0, 0]}>
+              <span className="bg-[#094f39] text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-lg border border-white/20">NH66</span>
+            </Tooltip>
+          </Marker>
+
+          <Marker 
+            position={[14.922651, 74.075744]} 
+            icon={L.divIcon({ className: 'pointer-events-none' })}
+          >
+            <Tooltip permanent direction="top" className="highway-tooltip" offset={[0, 0]}>
+              <span className="bg-[#094f39] text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-lg border border-white/20">NH66</span>
+            </Tooltip>
+          </Marker>
+
+          {/* Dotted Access Road */}
+          <Polyline 
+            positions={ACCESS_ROAD_PATH} 
+            pathOptions={{ 
+              color: '#f4f6fc', 
+              weight: 3, 
+              opacity: 0.8,
+              dashArray: '5, 8' // Dotted effect
+            }}
+          />
+
+          {/* Access Road Label */}
+          <Marker 
+            position={[14.950596, 74.054340]} 
+            icon={L.divIcon({ className: 'pointer-events-none' })}
+          >
+            <Tooltip permanent direction="top" className="highway-tooltip" offset={[0, 0]}>
+              <span className="bg-[#094f39] text-white px-2 py-0.5 rounded text-[10px] font-bold shadow-lg border border-white/20">Access Road</span>
+            </Tooltip>
+          </Marker>
+
+          {/* State Boundary (Goa-Karnataka) */}
+          <Polyline 
+            positions={STATE_BOUNDARY_PATH} 
+            pathOptions={{ 
+              color: '#ffffff', 
+              weight: 4, 
+              opacity: 0.6,
+              dashArray: '4, 8' // Broad dotted
+            }}
+          />
+
+          {/* State Labels along the boundary */}
+          <Marker 
+            position={[14.910986, 74.094491]} 
+            icon={L.divIcon({ className: 'pointer-events-none' })}
+          >
+            <Tooltip permanent direction="top" className="boundary-label-goa" offset={[0, -10]}>
+              <span className="text-white text-[8px] font-bold tracking-[0.3em] uppercase">Goa</span>
+            </Tooltip>
+            <Tooltip permanent direction="bottom" className="boundary-label-karnataka" offset={[0, 10]}>
+              <span className="text-white text-[8px] font-bold tracking-[0.3em] uppercase">Karnataka</span>
+            </Tooltip>
+          </Marker>
         </MapContainer>
       </div>
 
-      <div className="absolute bottom-6 right-6 glass-panel px-4 py-2 rounded-full text-[10px] uppercase font-bold tracking-tighter text-zinc-500 z-[1000] pointer-events-none">
-        South Goa Estate • Phase 01 Site Plan (OSM/Esri)
+      <div className="absolute bottom-[104px] md:bottom-16 right-4 md:right-6 glass-panel px-4 py-2 rounded-xl text-[9px] font-medium tracking-wide text-zinc-600 z-[1000] pointer-events-none max-w-[160px] md:max-w-[200px] text-right">
+        To view the location names, hover over them with your cursor. On mobile, simply tap the location.
+      </div>
+
+      <div className="absolute bottom-[124px] md:bottom-6 right-4 md:right-6 glass-panel px-4 py-2 rounded-full text-[9px] uppercase font-bold tracking-[0.2em] text-brand-primary z-[1000] pointer-events-none hidden md:block">
+        Palms of South Goa • Phase 1
       </div>
     </div>
   );
