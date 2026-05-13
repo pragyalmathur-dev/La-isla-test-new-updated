@@ -134,6 +134,7 @@ const HIGHER_SECONDARY: [number, number] = [14.948146, 74.056558];
 const HAVANA_BAR: [number, number] = [14.962635, 74.052656];
 const NIRAKAR_HIGH_SCHOOL: [number, number] = [14.960280, 74.055549];
 const CHURCH_ST_ANTHONY: [number, number] = [14.964358, 74.048235];
+const BLUEMOON_BY_NEELCHAND: [number, number] = [14.980423, 74.041433];
 const CASA_JAALI: [number, number] = [14.999068, 74.028544];
 const COTIGAO_WILDLIFE: [number, number] = [14.965751, 74.195798];
 const MUDAGERI_FALLS: [number, number] = [14.904467, 74.132291];
@@ -180,6 +181,50 @@ const beachPin = L.divIcon({
   iconSize: [24, 24],
   iconAnchor: [12, 24],
 });
+
+const restaurantPin = L.divIcon({
+  className: 'custom-div-icon',
+  html: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="11" fill="#B9816B" stroke="white" stroke-width="2"/>
+    <path d="M8 7V10C8 11.1046 8.89543 12 10 12V17M14 7V17M14 7C16 7 17 8.5 17 10C17 11.5 16 12 14 12" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M10 7V12" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+const schoolPin = L.divIcon({
+  className: 'custom-div-icon',
+  html: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 21.7C12 21.7 20 15.4 20 10C20 5.58172 16.4183 2 12 2C7.58172 2 4 5.58172 4 10C4 15.4 12 21.7 12 21.7Z" fill="#1A365D" stroke="white" stroke-width="2"/>
+    <path d="M12 7L7 10L12 13L17 10L12 7Z" fill="white"/>
+    <path d="M7 10V13.5C7 13.5 9 15 12 15C15 15 17 13.5 17 13.5V10" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 24],
+});
+
+const cricketPin = L.divIcon({
+  className: 'custom-div-icon',
+  html: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="11" fill="#4B7C47" stroke="white" stroke-width="2"/>
+    <circle cx="12" cy="12" r="6" fill="white" fill-opacity="0.2" />
+    <path d="M12 6V18M9 6C9 6 10.5 12 9 18M15 6C15 6 13.5 12 15 18" stroke="white" stroke-width="1" stroke-linecap="round" stroke-dasharray="0.5 1.5"/>
+  </svg>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+const churchPin = L.divIcon({
+  className: 'custom-div-icon',
+  html: `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 21.7C12 21.7 20 15.4 20 10C20 5.58172 16.4183 2 12 2C7.58172 2 4 5.58172 4 10C4 15.4 12 21.7 12 21.7Z" fill="#5856D6" stroke="white" stroke-width="2"/>
+    <path d="M12 6V14M10 8H14" stroke="white" stroke-width="1.5" stroke-linecap="round"/>
+  </svg>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 24],
+});
+
 
 
 // Custom component to handle image rotation since Leaflet doesn't support it natively
@@ -235,9 +280,23 @@ function ToSiteButton({ map, className }: { map: L.Map | null; className?: strin
   );
 }
 
-function Sidebar({ map, isMobileExpanded, setIsMobileExpanded }: { map: L.Map | null; isMobileExpanded: boolean; setIsMobileExpanded: (v: boolean) => void }) {
+function Sidebar({ 
+  map, 
+  isMobileExpanded, 
+  setIsMobileExpanded,
+  activeFilter,
+  setActiveFilter
+}: { 
+  map: L.Map | null; 
+  isMobileExpanded: boolean; 
+  setIsMobileExpanded: (v: boolean) => void;
+  activeFilter: string;
+  setActiveFilter: (f: any) => void;
+}) {
   const [selectedVilla, setSelectedVilla] = useState<number | null>(null);
   const floorPlans = Array.from({ length: 48 }, (_, i) => i + 1);
+
+  const filters = ['All', 'Restaurants', 'Education', 'Tourist Spots', 'Sports'];
 
   return (
     <div className={`absolute bottom-0 left-0 right-0 md:left-6 md:top-6 md:bottom-6 md:w-[360px] md:rounded-2xl z-[1000] flex flex-col overflow-hidden pointer-events-auto transition-all duration-500 ease-in-out ${isMobileExpanded ? 'h-[90vh]' : 'h-24 md:h-auto'} bg-[#fdfdfb] md:shadow-2xl border-none`}>
@@ -281,6 +340,34 @@ function Sidebar({ map, isMobileExpanded, setIsMobileExpanded }: { map: L.Map | 
                 </button>
               ))}
             </div>
+
+            {selectedVilla !== null && (
+              <div className="p-4 bg-[#f2f1e6] rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Villa {selectedVilla.toString().padStart(2, '0')} Plans</p>
+                  <span className="text-[9px] font-medium text-[#637d5b] bg-white px-2 py-0.5 rounded-full border border-[#637d5b]/20">With Dimensions</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <a 
+                    href={`/floor-plans/G.F_Villa-${selectedVilla.toString().padStart(2, '0')}_WD-01.jpg`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white border border-zinc-200 rounded-lg text-[11px] font-bold text-[#3d4a35] hover:border-[#637d5b] hover:text-[#637d5b] transition-all group"
+                  >
+                    <span>Ground Floor</span>
+                  </a>
+                  <a 
+                    href={`/floor-plans/F.F_Villa-${selectedVilla.toString().padStart(2, '0')}_WD-01.jpg`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white border border-zinc-200 rounded-lg text-[11px] font-bold text-[#3d4a35] hover:border-[#637d5b] hover:text-[#637d5b] transition-all group"
+                  >
+                    <span>First Floor</span>
+                  </a>
+                </div>
+                <p className="text-[9px] text-zinc-400 italic text-center">Note: Ensure files are uploaded to /public/floor-plans/</p>
+              </div>
+            )}
           </div>
 
           <div className="h-px bg-zinc-100 mt-8 mb-8" />
@@ -299,6 +386,28 @@ function Sidebar({ map, isMobileExpanded, setIsMobileExpanded }: { map: L.Map | 
               ))}
             </div>
           </div>
+
+          <div className="h-px bg-zinc-100 mt-8 mb-8" />
+
+          {/* Filter Section */}
+          <div className="space-y-6">
+            <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Filter Amenities</h3>
+            <div className="flex flex-wrap gap-2">
+              {filters.map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setActiveFilter(filter)}
+                  className={`px-4 py-2 text-[11px] font-bold rounded-full transition-all border ${
+                    activeFilter === filter
+                      ? 'bg-[#3d4a35] text-white border-[#3d4a35]'
+                      : 'bg-white text-zinc-400 border-zinc-200 hover:border-[#3d4a35]/40 hover:text-[#3d4a35]'
+                  }`}
+                >
+                  {filter}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -313,6 +422,7 @@ function Sidebar({ map, isMobileExpanded, setIsMobileExpanded }: { map: L.Map | 
 export default function App() {
   const [map, setMap] = useState<L.Map | null>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<'All' | 'Restaurants' | 'Education' | 'Tourist Spots' | 'Sports'>('All');
   const [showOverlay] = useState(true);
   const [overlayOpacity] = useState(1);
   const [rotation] = useState(0);
@@ -323,7 +433,13 @@ export default function App() {
 
   return (
     <div className="relative h-screen w-full bg-[#f4f4f4] overflow-hidden">
-      <Sidebar map={map} isMobileExpanded={isMobileExpanded} setIsMobileExpanded={setIsMobileExpanded} />
+      <Sidebar 
+        map={map} 
+        isMobileExpanded={isMobileExpanded} 
+        setIsMobileExpanded={setIsMobileExpanded}
+        activeFilter={activeFilter}
+        setActiveFilter={setActiveFilter}
+      />
       
       <div className="absolute right-4 top-4 md:right-6 md:top-6 z-[1000] flex flex-col gap-2 pointer-events-auto">
         <button className="glass-panel w-10 h-10 rounded-xl flex items-center justify-center text-zinc-700 hover:text-brand-primary transition-colors">
@@ -355,158 +471,201 @@ export default function App() {
           )}
 
           {/* Galgibaga Beach Pinpoint */}
-          <Marker position={GALGIBAGA_BEACH} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Galgibaga Beach</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">4 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1.8 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Tourist Spots') && (
+            <Marker position={GALGIBAGA_BEACH} icon={beachPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Galgibaga Beach</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">4 Min Drive</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1.8 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* Talpona Beach Pinpoint */}
-          <Marker position={TALPONA_BEACH} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Talpona Beach</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">8 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">4.2 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Tourist Spots') && (
+            <Marker position={TALPONA_BEACH} icon={beachPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Talpona Beach</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">8 Min Drive</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">4.2 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* Xandrem Beach Pinpoint */}
-          <Marker position={XANDREM_BEACH} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Xandrem Beach</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.2 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Tourist Spots') && (
+            <Marker position={XANDREM_BEACH} icon={beachPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Xandrem Beach</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.2 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* Tolivia Beach Pinpoint */}
-          <Marker position={TOLIVIA_BEACH} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Tolivia Beach</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">3.1 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Tourist Spots') && (
+            <Marker position={TOLIVIA_BEACH} icon={beachPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Tolivia Beach</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7 Min Drive</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">3.1 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* The Lalit Golf & Spa Resort Pinpoint */}
-          <Marker position={LALIT_RESORT} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">The Lalit Golf & Spa Resort</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">12 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7.5 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Tourist Spots') && (
+            <Marker position={LALIT_RESORT} icon={beachPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">The Lalit Golf & Spa Resort</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">12 Min Drive</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7.5 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* Havana Bar & Restaurant */}
-          <Marker position={HAVANA_BAR} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Havana Bar & Restaurant</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.1 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Restaurants') && (
+            <Marker position={HAVANA_BAR} icon={restaurantPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#B9816B] text-[10px] font-bold tracking-wider uppercase">Havana Bar & Restaurant</span>
+                  <span className="text-[#B9816B]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
+                  <span className="text-[#B9816B]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.1 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
+
+          {/* Bluemoon by Neelchand Restaurant */}
+          {(activeFilter === 'All' || activeFilter === 'Restaurants') && (
+            <Marker position={BLUEMOON_BY_NEELCHAND} icon={restaurantPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#B9816B] text-[10px] font-bold tracking-wider uppercase">Bluemoon by Neelchand</span>
+                  <span className="text-[#B9816B]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">6 Min Drive</span>
+                  <span className="text-[#B9816B]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.4 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* Nirakar Cricket Ground Pinpoint */}
-          <Marker position={CRICKET_GROUND} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Nirakar Cricket Ground</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">0.4 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Sports') && (
+            <Marker position={CRICKET_GROUND} icon={cricketPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#4B7C47] text-[10px] font-bold tracking-wider uppercase">Nirakar Cricket Ground</span>
+                  <span className="text-[#4B7C47]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1 Min Drive</span>
+                  <span className="text-[#4B7C47]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">0.4 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* S S Angle Higher Secondary School Pinpoint */}
-          <Marker position={HIGHER_SECONDARY} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">S S Angle Higher Secondary School</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">0.3 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Education') && (
+            <Marker position={HIGHER_SECONDARY} icon={schoolPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#1A365D] text-[10px] font-bold tracking-wider uppercase">S S Angle Higher Secondary School</span>
+                  <span className="text-[#1A365D]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1 Min Drive</span>
+                  <span className="text-[#1A365D]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">0.3 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
           
           {/* Nirakar High School Pinpoint */}
-          <Marker position={NIRAKAR_HIGH_SCHOOL} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Nirakar High School</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">3 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1.5 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Education') && (
+            <Marker position={NIRAKAR_HIGH_SCHOOL} icon={schoolPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#1A365D] text-[10px] font-bold tracking-wider uppercase">Nirakar High School</span>
+                  <span className="text-[#1A365D]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">3 Min Drive</span>
+                  <span className="text-[#1A365D]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">1.5 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
           
           {/* Church of St Anthony of Lisbon Pinpoint */}
-          <Marker position={CHURCH_ST_ANTHONY} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Church of St Anthony of Lisbon</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.8 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Tourist Spots') && (
+            <Marker position={CHURCH_ST_ANTHONY} icon={churchPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#5856D6] text-[10px] font-bold tracking-wider uppercase">Church of St Anthony of Lisbon</span>
+                  <span className="text-[#5856D6]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">5 Min Drive</span>
+                  <span className="text-[#5856D6]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">2.8 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
           
           {/* Casa Jaali (Cafe) Pinpoint */}
-          <Marker position={CASA_JAALI} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Casa Jaali (Cafe)</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">15 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">9.5 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Restaurants') && (
+            <Marker position={CASA_JAALI} icon={restaurantPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#B9816B] text-[10px] font-bold tracking-wider uppercase">Casa Jaali (Cafe)</span>
+                  <span className="text-[#B9816B]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">15 Min Drive</span>
+                  <span className="text-[#B9816B]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">9.5 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
+
 
           {/* Cotigao Wildlife Sanctuary Pinpoint */}
-          <Marker position={COTIGAO_WILDLIFE} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Cotigao Wildlife Sanctuary</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">35 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">22 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Tourist Spots') && (
+            <Marker position={COTIGAO_WILDLIFE} icon={beachPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Cotigao Wildlife Sanctuary</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">35 Min Drive</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">22 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* Mudageri Falls Pinpoint */}
-          <Marker position={MUDAGERI_FALLS} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Mudageri Falls</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">25 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">14 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Tourist Spots') && (
+            <Marker position={MUDAGERI_FALLS} icon={beachPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Mudageri Falls</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">25 Min Drive</span>
+                  <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">14 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
 
           {/* Zest (Cafe & Bar) Pinpoint */}
-          <Marker position={ZEST_CAFE} icon={beachPin}>
-            <Tooltip direction="top" className="beach-tooltip">
-              <span>
-                <span className="text-[#094f39] text-[10px] font-bold tracking-wider uppercase">Zest (Cafe & Bar)</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">14 Min Drive</span>
-                <span className="text-[#094f39]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7.2 KM Away</span>
-              </span>
-            </Tooltip>
-          </Marker>
+          {(activeFilter === 'All' || activeFilter === 'Restaurants') && (
+            <Marker position={ZEST_CAFE} icon={restaurantPin}>
+              <Tooltip direction="top" className="beach-tooltip">
+                <span>
+                  <span className="text-[#B9816B] text-[10px] font-bold tracking-wider uppercase">Zest (Cafe & Bar)</span>
+                  <span className="text-[#B9816B]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">14 Min Drive</span>
+                  <span className="text-[#B9816B]/80 text-[8px] font-medium uppercase tracking-widest leading-tight">7.2 KM Away</span>
+                </span>
+              </Tooltip>
+            </Marker>
+          )}
+
 
           {/* NH 66 Highway */}
           <Polyline 
