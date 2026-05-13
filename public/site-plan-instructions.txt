@@ -1,0 +1,1 @@
+Place your site-plan.png file in this folder to see it superimposed on the map.

@@ -140,16 +140,22 @@ function Sidebar() {
 }
 
 export default function App() {
+  const [showOverlay, setShowOverlay] = useState(true);
+
   return (
     <div className="relative h-screen w-full bg-zinc-100 overflow-hidden">
       <Sidebar />
       
       <div className="absolute right-6 top-6 z-[1000] flex flex-col gap-2 pointer-events-auto">
-        <button className="glass-panel w-10 h-10 rounded-xl flex items-center justify-center text-zinc-700 hover:text-orange-600 transition-colors">
-          <Maximize2 size={20} />
+        <button 
+          onClick={() => setShowOverlay(!showOverlay)}
+          className={`glass-panel w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${showOverlay ? 'text-orange-600' : 'text-zinc-700'}`}
+          title="Toggle Site Plan Overlay"
+        >
+          <Layers size={20} />
         </button>
         <button className="glass-panel w-10 h-10 rounded-xl flex items-center justify-center text-zinc-700 hover:text-orange-600 transition-colors">
-          <Layers size={20} />
+          <Maximize2 size={20} />
         </button>
       </div>
 
@@ -168,13 +174,13 @@ export default function App() {
           />
           
           {/* Super-imposed site plan */}
-          <ImageOverlay
-            url="https://images.unsplash.com/photo-1541462608141-ad4d3f9505px?auto=format&fit=crop&q=80&w=2670" 
-            // Using a high-quality placeholder for now. 
-            // Replace with your project-specific "site-plan.png" file URL.
-            bounds={SITE_PLAN_BOUNDS}
-            opacity={0.7}
-          />
+          {showOverlay && (
+            <ImageOverlay
+              url="/site-plan.png" 
+              bounds={SITE_PLAN_BOUNDS}
+              opacity={0.8}
+            />
+          )}
           
           <Polygon 
             positions={PROPERTY_BOUNDARY} 
@@ -190,12 +196,12 @@ export default function App() {
             position={ENTRY_POINT}
             icon={L.divIcon({
               className: 'entry-point-icon',
-              html: '<div style="background-color: #F27D26; width: 12px; height: 12px; border: 2px solid white; border-radius: 2px; transform: rotate(45deg);"></div>',
-              iconSize: [12, 12],
-              iconAnchor: [6, 6],
+              html: '<div style="background-color: #F27D26; width: 14px; height: 14px; border: 2px solid white; border-radius: 2px; transform: rotate(45deg); box-shadow: 0 0 10px rgba(242,125,38,0.5);"></div>',
+              iconSize: [14, 14],
+              iconAnchor: [7, 7],
             })}
           >
-            <Popup>Main Site Entry Point</Popup>
+            <Popup>Main Site Entry Point<br/>14.950125, 74.053317</Popup>
           </Marker>
 
           {VILLAS.map(villa => (
