@@ -657,28 +657,29 @@ function EnquiryModal({ villa, onClose, onSuccess }: { villa: Villa; onClose: ()
   );
 }
 
-function LoginPage() {
+function LoginPage({ onAuthorize }: { onAuthorize: (email: string) => void }) {
   const [loading, setLoading] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
+  const [emailInput, setEmailInput] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setAccessDenied(false);
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const email = result.user.email;
+    setError(null);
+
+    // Artificial delay for feedback
+    setTimeout(() => {
+      const email = emailInput.trim().toLowerCase();
       
-      if (email && !ALLOWED_EMAILS.includes(email.toLowerCase())) {
-        await auth.signOut();
+      if (ALLOWED_EMAILS.includes(email)) {
+        onAuthorize(email);
+      } else {
         setAccessDenied(true);
       }
-    } catch (err) {
-      console.error(err);
-    } finally {
       setLoading(false);
-    }
+    }, 800);
   };
 
   return (
@@ -697,19 +698,27 @@ function LoginPage() {
         {accessDenied ? (
           <div className="bg-red-50 rounded-[24px] p-8 mb-10 text-center text-red-600 text-[14px] leading-relaxed border border-red-100">
             <AlertCircle className="mx-auto mb-3" size={24} />
-            Your account does not have permission to access this resource. Please contact the administrator.
+            Your email does not have permission to access this resource. Please contact the administrator.
+          </div>
+        ) : error ? (
+          <div className="bg-amber-50 rounded-[24px] p-8 mb-10 text-center text-amber-700 text-[14px] leading-relaxed border border-amber-100">
+            <AlertCircle className="mx-auto mb-3" size={24} />
+            {error}
           </div>
         ) : (
           <div className="bg-[#f8f9f8] rounded-[24px] p-8 mb-10 text-center text-[#556d64] text-[15px] leading-relaxed">
-            This is a confidential architectural resource. Please enter your company email to proceed.
+            This is a confidential architectural resource. Please enter your email to proceed.
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="w-full space-y-8">
-          {!accessDenied && (
+        <form onSubmit={handleSubmit} className="w-full space-y-8">
+          {!accessDenied && !error && (
             <div className="relative">
               <input
                 type="email"
+                required
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="Email Address"
                 className="w-full px-6 py-5 rounded-xl border border-zinc-200 bg-white text-[#3d4a35] placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#094f39]/10 focus:border-[#094f39] transition-all"
               />
@@ -724,7 +733,7 @@ function LoginPage() {
             disabled={loading}
             className="w-full py-5 bg-[#094f39] hover:bg-[#073d2c] text-white rounded-2xl font-bold text-[16px] transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3"
           >
-            {loading ? <Loader2 className="animate-spin" size={22} /> : accessDenied ? 'Retry with different account' : 'Sign in'}
+            {loading ? <Loader2 className="animate-spin" size={22} /> : (accessDenied || error) ? 'Try with different email' : 'Sign in'}
           </button>
         </form>
 
@@ -875,7 +884,7 @@ function Sidebar({
   setSelectedRenderCategory
 }: { 
   map: L.Map | null; 
-  user: FirebaseUser | null;
+  user: any;
   villas: Villa[];
   isMobileExpanded: boolean; 
   setIsMobileExpanded: (v: boolean) => void;
@@ -886,15 +895,7 @@ function Sidebar({
   setSelectedRenderCategory: (c: string | null) => void;
 }) {
   const filters = ['All', 'Restaurants', 'Education', 'Tourist Spots', 'Sports'];
-
-  const handleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const authorizedEmail = localStorage.getItem('la-isla-user-email');
 
   return (
     <div className={`absolute bottom-0 left-0 right-0 md:left-6 md:top-6 md:bottom-6 md:w-[360px] md:rounded-2xl z-[1000] flex flex-col overflow-hidden pointer-events-auto transition-all duration-500 ease-in-out ${isMobileExpanded ? 'h-[90vh]' : 'h-24 md:h-auto'} bg-[#fdfdfb] md:shadow-2xl border-none`}>
@@ -903,8 +904,13 @@ function Sidebar({
         <div className="flex justify-between items-start mb-1">
           <h1 className="text-[28px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase">La Isla</h1>
           <div className="flex items-center gap-3">
-             {user && (
-               <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-8 h-8 rounded-full border-2 border-[#637d5b]/20" />
+             {authorizedEmail && (
+               <div className="flex items-center gap-2">
+                 <div className="w-8 h-8 rounded-full bg-[#637d5b]/10 border border-[#637d5b]/20 flex items-center justify-center">
+                   <User size={14} className="text-[#637d5b]" />
+                 </div>
+                 <span className="hidden md:block text-[9px] font-bold text-zinc-400 uppercase tracking-tighter max-w-[100px] truncate">{authorizedEmail.split('@')[0]}</span>
+               </div>
              )}
             <button 
                 onClick={() => setIsMobileExpanded(!isMobileExpanded)}
@@ -1012,6 +1018,7 @@ function Sidebar({
 export default function App() {
   const [map, setMap] = useState<L.Map | null>(null);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [isAuthorized, setIsAuthorized] = useState<boolean>(localStorage.getItem('la-isla-authorized') === 'true');
   const [villas, setVillas] = useState<Villa[]>([]);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Restaurants' | 'Education' | 'Tourist Spots' | 'Sports'>('All');
@@ -1027,41 +1034,18 @@ export default function App() {
   ]);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (u) => {
-        if (u) {
-            // Check access list
-            const email = u.email;
-            if (email && !ALLOWED_EMAILS.includes(email.toLowerCase())) {
-                await auth.signOut();
-                setUser(null);
-                return;
-            }
-
-            setUser(u);
-            // Save user profile if not exists
-            const userRef = doc(db, 'users', u.uid);
-            getDocs(query(collection(db, 'users'), where('email', '==', u.email))).then(snap => {
-                if (snap.empty) {
-                    setDoc(userRef, {
-                        email: u.email,
-                        displayName: u.displayName,
-                        photoURL: u.photoURL,
-                        role: 'user'
-                    });
-                }
-            });
-        } else {
-            setUser(null);
-        }
-    });
-
-    // Subscribe to villas
+    // Subscribe to villas immediately as they are public in rules
     const unsubVillas = villaService.subscribeToVillas((data) => {
         if (data.length === 0) {
-            // If empty, seed some data automatically for this demo
             seedInitialVillas();
         }
         setVillas(data as Villa[]);
+    });
+
+    // Also keep Firebase Auth for background session integrity, 
+    // but the main UI state is driven by isAuthorized
+    const unsubscribe = onAuthStateChanged(auth, (u) => {
+      setUser(u);
     });
 
     return () => {
@@ -1069,6 +1053,19 @@ export default function App() {
         unsubVillas();
     };
   }, []);
+
+  const handleAuthorize = (email: string) => {
+    localStorage.setItem('la-isla-authorized', 'true');
+    localStorage.setItem('la-isla-user-email', email);
+    setIsAuthorized(true);
+  };
+
+  const handleLogout = async () => {
+    localStorage.removeItem('la-isla-authorized');
+    localStorage.removeItem('la-isla-user-email');
+    setIsAuthorized(false);
+    await auth.signOut();
+  };
 
   const seedInitialVillas = async () => {
     console.log('Seeding initial villas...');
@@ -1111,7 +1108,7 @@ export default function App() {
   return (
     <div className="relative h-screen w-full bg-[#f4f4f4] overflow-hidden">
       <AnimatePresence>
-        {!user && <LoginPage />}
+        {!isAuthorized && <LoginPage onAuthorize={handleAuthorize} />}
       </AnimatePresence>
 
       <Sidebar 
