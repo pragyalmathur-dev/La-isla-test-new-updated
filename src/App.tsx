@@ -914,10 +914,9 @@ function Sidebar({
              )}
             <button 
                 onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-                className="md:hidden text-zinc-400 p-1"
+                className="md:hidden text-[#637d5b] p-2 bg-[#637d5b]/10 rounded-full transition-all"
             >
-                <div className="w-5 h-0.5 bg-zinc-400 mb-1" />
-                <div className="w-5 h-0.5 bg-zinc-400" />
+                {isMobileExpanded ? <ChevronDown size={20} /> : <ChevronUp size={20} className="animate-bounce" />}
             </button>
           </div>
         </div>
@@ -935,7 +934,7 @@ function Sidebar({
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Select Villa</h3>
-                <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">{villas.length} Enventories</span>
+                <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">{villas.length} Inventories</span>
               </div>
               <div className="grid grid-cols-5 gap-3">
                 {villas.sort((a, b) => a.number - b.number).map((villa) => (
@@ -1036,7 +1035,9 @@ export default function App() {
   useEffect(() => {
     // Subscribe to villas immediately as they are public in rules
     const unsubVillas = villaService.subscribeToVillas((data) => {
-        if (data.length === 0) {
+        // If the inventory is missing or incomplete, trigger seeding
+        // Expecting 23 villas (1-24, skipping 13)
+        if (data.length < 23) {
             seedInitialVillas();
         }
         setVillas(data as Villa[]);
@@ -1068,10 +1069,12 @@ export default function App() {
   };
 
   const seedInitialVillas = async () => {
-    console.log('Seeding initial villas...');
+    console.log('Checking/Seeding inventory...');
     const villaCollection = collection(db, 'villas');
     const existing = await getDocs(villaCollection);
-    if (!existing.empty) return;
+    
+    // If we already have the full set, don't seed
+    if (existing.size >= 23) return;
 
     const dummyData = [
         { number: 1, type: '4 BHK', status: 'Available', sqft: 4500, description: 'Premium 4BHK with private pool and garden.' },
@@ -1084,10 +1087,16 @@ export default function App() {
         { number: 8, type: '2 BHK', status: 'Sold', sqft: 2300, description: 'Compact yet luxurious 2BHK living.' },
     ];
 
-    // Seed more villas to fill the 24 slots we have assets for
+    // Seed missing villas to fill the slots
+    const seedPromises = [];
     for (let i = 1; i <= 24; i++) {
         if (i === 13) continue; // Skip 13
         const villaId = `villa_${i.toString().padStart(2, '0')}`;
+        
+        // Check if this specific villa already exists in the fetched snap
+        const alreadyExists = existing.docs.some(doc => doc.id === villaId);
+        if (alreadyExists) continue;
+
         const existingInfo = dummyData.find(d => d.number === i);
         const data = existingInfo || {
             number: i,
@@ -1096,7 +1105,12 @@ export default function App() {
             sqft: 2000 + (i * 100),
             description: `Beautiful Villa ${i} in the heart of South Goa.`
         };
-        await setDoc(doc(db, 'villas', villaId), data);
+        seedPromises.push(setDoc(doc(db, 'villas', villaId), data));
+    }
+    
+    if (seedPromises.length > 0) {
+        console.log(`Seeding ${seedPromises.length} villas...`);
+        await Promise.all(seedPromises);
     }
   };
 
@@ -1460,7 +1474,7 @@ export default function App() {
         </MapContainer>
       </div>
 
-      <div className="absolute bottom-6 right-4 md:right-6 bg-[#3d4a35]/80 backdrop-blur-sm px-4 py-2 rounded-xl text-[9px] font-medium tracking-wide text-white z-[1000] pointer-events-none max-w-[160px] md:max-w-[200px] text-right border border-white/10 shadow-2xl">
+      <div className="absolute bottom-28 right-4 md:bottom-6 md:right-6 bg-[#3d4a35]/80 backdrop-blur-sm px-4 py-2 rounded-xl text-[9px] font-medium tracking-wide text-white z-[1000] pointer-events-none max-w-[160px] md:max-w-[200px] text-right border border-white/10 shadow-2xl">
         To view the location names, hover over them with your cursor. On mobile, simply tap the location.
       </div>
     </div>
