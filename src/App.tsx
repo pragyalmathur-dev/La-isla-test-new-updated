@@ -399,6 +399,132 @@ function FloorPlanModal({ villaNumber, onClose }: { villaNumber: number; onClose
   );
 }
 
+function RenderModal({ category, onClose }: { category: string; onClose: () => void }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  
+  // Data mapping for renders based on user's naming convention
+  const renderData: Record<string, { title: string, stems: string[] }> = {
+    "Aerial View": { 
+      title: "Aerial View", 
+      stems: ["aerial_view"] 
+    },
+    "2 BHK": { 
+      title: "2 BHK Perspective", 
+      stems: ["2bhk_balcony", "2bhk_ext", "2bhk_int"] 
+    },
+    "3 BHK": { 
+      title: "3 BHK Perspective", 
+      stems: ["3bhk_ext_1", "3bhk_ext_2", "3bhk_int"] 
+    },
+    "4 BHK": { 
+      title: "4 BHK Perspective", 
+      stems: ["4bhk_ext", "4bhk_pool", "4bhk_int"] 
+    }
+  };
+
+  const currentCategory = renderData[category] || { title: category, stems: [category.toLowerCase().replace(' ', '_')] };
+  const images = currentCategory.stems;
+  const currentImageStem = images[currentIndex];
+  const fileName = `${currentImageStem}.webp`;
+  const filePath = `/renders/${fileName}`;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[3000] flex flex-col bg-[#fdfdfb]"
+      onClick={onClose}
+    >
+      {/* Modal Header */}
+      <div className="p-6 md:p-8 flex items-center justify-between shrink-0">
+        <div>
+          <h2 className="text-[28px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase">{category}</h2>
+          <p className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase mt-1">
+            Perspective {currentIndex + 1} of {images.length}
+          </p>
+        </div>
+        <button 
+          onClick={onClose}
+          className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400"
+        >
+          <X size={32} strokeWidth={1.5} />
+        </button>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-12 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="relative w-full h-full max-w-7xl flex items-center justify-center group">
+          <AnimatePresence mode="wait">
+            <motion.img
+              key={filePath}
+              src={filePath}
+              alt={`${category} perspective ${currentIndex + 1}`}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.05 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="max-w-full max-h-full object-contain shadow-2xl rounded-sm"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = `https://placehold.co/1200x800/fdfdfb/3d4a35?text=${category}+Render\\n${fileName}`;
+              }}
+            />
+          </AnimatePresence>
+
+          {/* Navigation Arrows */}
+          {images.length > 1 && (
+            <>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentIndex((prev) => (prev - 1 + images.length) % images.length);
+                }}
+                className="absolute left-4 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white md:opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
+              >
+                <ChevronLeft size={32} />
+              </button>
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setCurrentIndex((prev) => (prev + 1) % images.length);
+                }}
+                className="absolute right-4 p-4 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-md text-white md:opacity-0 group-hover:opacity-100 transition-all focus:opacity-100"
+              >
+                <ChevronRight size={32} />
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Thumbnails / Footer */}
+      {images.length > 1 && (
+        <div className="p-8 flex justify-center gap-4 shrink-0 bg-zinc-50/50" onClick={(e) => e.stopPropagation()}>
+          {images.map((stem, idx) => (
+            <button
+              key={stem}
+              onClick={() => setCurrentIndex(idx)}
+              className={`relative w-24 aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${idx === currentIndex ? 'border-[#637d5b] scale-105 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'}`}
+            >
+              <img 
+                src={`/renders/${stem}.webp`}
+                alt={`Thumbnail ${idx + 1}`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = `https://placehold.co/120x80/fdfdfb/3d4a35?text=${idx + 1}`;
+                }}
+              />
+              {idx === currentIndex && (
+                <div className="absolute inset-0 bg-[#637d5b]/10" />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
 function Sidebar({ 
   map, 
   isMobileExpanded, 
@@ -406,7 +532,8 @@ function Sidebar({
   activeFilter,
   setActiveFilter,
   selectedVilla,
-  setSelectedVilla
+  setSelectedVilla,
+  setSelectedRenderCategory
 }: { 
   map: L.Map | null; 
   isMobileExpanded: boolean; 
@@ -415,6 +542,7 @@ function Sidebar({
   setActiveFilter: (f: any) => void;
   selectedVilla: number | null;
   setSelectedVilla: (v: number | null) => void;
+  setSelectedRenderCategory: (c: string | null) => void;
 }) {
   const floorPlans = Array.from({ length: 48 }, (_, i) => i + 1);
 
@@ -473,6 +601,7 @@ function Sidebar({
               {["Aerial View", "2 BHK", "3 BHK", "4 BHK"].map((render) => (
                 <button
                   key={render}
+                  onClick={() => setSelectedRenderCategory(render)}
                   className="py-3 px-2 text-[12px] font-bold border border-zinc-200 rounded-lg hover:border-[#637d5b]/40 hover:text-[#637d5b] transition-all text-zinc-400 bg-white"
                 >
                   {render}
@@ -518,6 +647,7 @@ export default function App() {
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Restaurants' | 'Education' | 'Tourist Spots' | 'Sports'>('All');
   const [selectedVilla, setSelectedVilla] = useState<number | null>(null);
+  const [selectedRenderCategory, setSelectedRenderCategory] = useState<string | null>(null);
 
   const [showOverlay] = useState(true);
   const [overlayOpacity] = useState(1);
@@ -537,6 +667,7 @@ export default function App() {
         setActiveFilter={setActiveFilter}
         selectedVilla={selectedVilla}
         setSelectedVilla={setSelectedVilla}
+        setSelectedRenderCategory={setSelectedRenderCategory}
       />
       
       <AnimatePresence>
@@ -544,6 +675,12 @@ export default function App() {
           <FloorPlanModal 
             villaNumber={selectedVilla} 
             onClose={() => setSelectedVilla(null)} 
+          />
+        )}
+        {selectedRenderCategory !== null && (
+          <RenderModal 
+            category={selectedRenderCategory} 
+            onClose={() => setSelectedRenderCategory(null)} 
           />
         )}
       </AnimatePresence>
