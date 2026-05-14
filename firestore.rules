@@ -1,0 +1,107 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Phase 3: Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isEmailVerified() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 1. Villas Collection
+    match /villas/{villaId} {
+      allow read, list: if true; // Public catalog
+
+      function isValidVilla(data) {
+        return data.keys().hasAll(['number', 'type', 'status'])
+          && data.number is number
+          && data.type in ['2 BHK', '3 BHK', '4 BHK']
+          && data.status in ['Available', 'Sold', 'Reserved']
+          && (!('price' in data) || data.price is number)
+          && (!('sqft' in data) || data.sqft is number)
+          && (!('description' in data) || (data.description is string && data.description.size() <= 2000))
+          && (!('image' in data) || (data.image is string && data.image.size() <= 256));
+      }
+
+      allow create: if isAdmin() && isValidVilla(incoming()) && isValidId(villaId);
+      allow update: if isAdmin() && isValidVilla(incoming());
+      allow delete: if isAdmin();
+    }
+
+    // 2. Enquiries Collection
+    match /enquiries/{enquiryId} {
+      function isValidEnquiry(data) {
+        return data.keys().hasAll(['villaId', 'userName', 'userEmail', 'createdAt'])
+          && data.villaId is string && data.villaId.size() <= 128
+          && data.userName is string && data.userName.size() <= 256
+          && data.userEmail is string && data.userEmail.size() <= 256
+          && data.createdAt == request.time
+          && (!('userPhone' in data) || (data.userPhone is string && data.userPhone.size() <= 20))
+          && (!('message' in data) || (data.message is string && data.message.size() <= 5000))
+          && (!('status' in data) || data.status in ['New', 'Contacted', 'Closed']);
+      }
+
+      // Identity check: If signed in, the email must match the token.
+      function isIdentityValid(data) {
+        return !isSignedIn() || data.userEmail == request.auth.token.email;
+      }
+
+      // Check if the referenced villa exists
+      function villaExists(data) {
+        return exists(/databases/$(database)/documents/villas/$(data.villaId));
+      }
+
+      allow create: if isValidEnquiry(incoming()) && isValidId(enquiryId) && isIdentityValid(incoming()) && villaExists(incoming());
+      
+      allow list: if (isSignedIn() && resource.data.userEmail == request.auth.token.email) || isAdmin();
+      allow get: if (isSignedIn() && resource.data.userEmail == request.auth.token.email) || isAdmin();
+      
+      allow update: if (isAdmin() || (isSignedIn() && existing().userEmail == request.auth.token.email)) 
+                    && isValidEnquiry(incoming())
+                    && (isAdmin() || incoming().diff(existing()).affectedKeys().hasOnly(['message', 'userName', 'userPhone']));
+      allow delete: if isAdmin();
+    }
+
+    // 3. User Profiles
+    match /users/{userId} {
+      function isValidUser(data) {
+        return data.keys().hasAll(['email'])
+          && data.email is string && data.email.size() <= 256
+          && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 256))
+          && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024))
+          && (!('role' in data) || data.role in ['user', 'admin']);
+      }
+
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && incoming().role == 'user';
+      allow update: if isSignedIn() && request.auth.uid == userId && isValidUser(incoming()) && (isAdmin() || incoming().role == existing().role);
+    }
+    
+    match /admins/{adminId} {
+        allow read: if isSignedIn();
+    }
+  }
+}

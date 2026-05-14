@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   MapContainer, 
   TileLayer, 
@@ -24,13 +24,69 @@ import {
   RotateCcw,
   MapPin,
   Navigation,
-  X
+  X,
+  Mail,
+  Phone,
+  User,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+  Map as MapIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { auth, db } from './lib/firebase';
+import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, User as FirebaseUser } from 'firebase/auth';
+import { villaService, enquiryService } from './lib/firestoreService';
+import { collection, doc, setDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+
+// Types
+interface Villa {
+  id: string;
+  number: number;
+  type: string;
+  status: 'Available' | 'Sold' | 'Reserved';
+  price?: number;
+  sqft?: number;
+  description?: string;
+  image?: string;
+}
 
 // South Goa - Exact Site Entry Point
 const ENTRY_POINT: [number, number] = [14.950125, 74.053317];
 const PROPERTY_CENTER: [number, number] = [14.9485, 74.0533];
+
+const ALLOWED_EMAILS = [
+  'akansha.trehan@vianaar.com',
+  'ruchi.sharma@vianaar.com',
+  'pragyal.mathur@vianaar.com',
+  'lance.godinho@vianaar.com',
+  'nikhil.mishra@vianaar.com',
+  'shivani.bharti@vianaar.com',
+  'mohan.choudhary@vianaar.com',
+  'suraj.pinge@vianaar.com',
+  'agnit.nandy@vianaar.com',
+  'divya.arora@vianaar.com',
+  'armando.braganca@vianaar.com',
+  'sidharth.najeev@vianaar.com',
+  'rohit.anurag@vianaar.com',
+  'himanshu.singh@vianaar.com',
+  'abhishek.katoch@vianaar.com',
+  'lawrence.rodrigues@vianaar.com',
+  'aman.shaikh@vianaar.com',
+  'ashish.khazanchi@vianaar.com',
+  'pragati.srivastava@vianaar.com',
+  'ritika.sharma@vianaar.com',
+  'shomnath.mazumdar@vianaar.com',
+  'abhin.bajaj@vianaar.com',
+  'akshada.sawant@vianaar.com',
+  'nirav.sidhpura@vianaar.com',
+  'salony.porwal@vianaar.com',
+  'rudrankk.banerjii@vianaar.com',
+  'bibek.sen@vianaar.com',
+  'varun.nagpal@vianaar.com',
+  'naina.nagpal@vianaar.com',
+  'pragyalmathur@gmail.com' // Current user email
+];
 
 const NH66_PATH: [number, number][] = [
   [15.050960, 74.022532],
@@ -282,14 +338,30 @@ function ToSiteButton({ map, className }: { map: L.Map | null; className?: strin
   );
 }
 
-function FloorPlanModal({ villaNumber, onClose }: { villaNumber: number; onClose: () => void }) {
+function FloorPlanModal({ villa, onClose }: { villa: Villa; onClose: () => void }) {
   const [withDimension, setWithDimension] = useState(true);
   const [floor, setFloor] = useState<'gf' | 'ff'>('gf');
+  const [showEnquiry, setShowEnquiry] = useState(false);
 
+  const villaNumber = villa.number;
   const villaStr = villaNumber.toString().padStart(2, '0');
   const dimensionStr = withDimension ? 'wd' : 'wod';
   const fileName = `v${villaStr}_${dimensionStr}_${floor}.webp`;
   const filePath = `/floor-plans/${fileName}`;
+
+  // If showing enquiry form
+  if (showEnquiry) {
+    return (
+      <EnquiryModal 
+        villa={villa} 
+        onClose={() => setShowEnquiry(false)} 
+        onSuccess={() => {
+            setShowEnquiry(false);
+            onClose();
+        }}
+      />
+    );
+  }
 
   return (
     <motion.div 
@@ -303,14 +375,25 @@ function FloorPlanModal({ villaNumber, onClose }: { villaNumber: number; onClose
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
-        className="bg-[#fdfdfb] w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        className="bg-[#fdfdfb] w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[95vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
         <div className="p-6 md:p-8 flex items-center justify-between border-b border-zinc-100 shrink-0">
-          <div>
-            <h2 className="text-[24px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase">Villa {villaStr}</h2>
-            <p className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase mt-1">Floor Plan Perspective</p>
+          <div className="flex items-center gap-4">
+            <div>
+              <h2 className="text-[24px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase">Villa {villaStr}</h2>
+              <div className="flex items-center gap-3 mt-1">
+                <span className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Floor Plan Perspective</span>
+                <span className="w-1 h-1 rounded-full bg-zinc-300" />
+                <span className={`text-[10px] font-bold tracking-[0.2em] uppercase ${
+                  villa.status === 'Available' ? 'text-emerald-600' : 
+                  villa.status === 'Sold' ? 'text-red-500' : 'text-amber-500'
+                }`}>
+                  {villa.status}
+                </span>
+              </div>
+            </div>
           </div>
           <button 
             onClick={onClose}
@@ -322,8 +405,29 @@ function FloorPlanModal({ villaNumber, onClose }: { villaNumber: number; onClose
 
         {/* Modal Body */}
         <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
-          {/* Controls - Mobile Top / Desktop Left */}
-          <div className="p-6 md:p-8 md:w-64 shrink-0 bg-zinc-50/50 border-b md:border-b-0 md:border-r border-zinc-100 flex flex-col gap-8">
+          {/* Details & Controls - Mobile Top / Desktop Left */}
+          <div className="p-6 md:p-8 md:w-80 shrink-0 bg-zinc-50/50 border-b md:border-b-0 md:border-r border-zinc-100 flex flex-col gap-6 overflow-y-auto">
+            
+            {/* Villa Specs */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-white rounded-xl border border-zinc-100 shadow-sm">
+                <p className="text-[9px] font-bold tracking-widest text-zinc-400 uppercase mb-1">Type</p>
+                <p className="text-[13px] font-serif font-bold text-[#3d4a35]">{villa.type}</p>
+              </div>
+              <div className="p-3 bg-white rounded-xl border border-zinc-100 shadow-sm">
+                <p className="text-[9px] font-bold tracking-widest text-zinc-400 uppercase mb-1">Area</p>
+                <p className="text-[13px] font-serif font-bold text-[#3d4a35]">{villa.sqft || '—'} sq.ft</p>
+              </div>
+            </div>
+
+            {villa.description && (
+              <p className="text-[11px] text-zinc-500 leading-relaxed">
+                {villa.description}
+              </p>
+            )}
+
+            <div className="h-px bg-zinc-200/50" />
+
             {/* Dimension Toggle */}
             <div className="space-y-4">
               <h3 className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Dimensions</h3>
@@ -364,17 +468,21 @@ function FloorPlanModal({ villaNumber, onClose }: { villaNumber: number; onClose
               </div>
             </div>
 
-            <div className="mt-auto hidden md:block">
-              <p className="text-[9px] text-zinc-400 leading-relaxed italic">
-                Files are loaded from:<br/>
-                <span className="font-mono text-[8px] break-all">{filePath}</span>
-              </p>
+            <div className="mt-auto pt-6">
+              <button 
+                onClick={() => setShowEnquiry(true)}
+                disabled={villa.status !== 'Available'}
+                className="w-full py-4 bg-[#637d5b] hover:bg-[#52694b] disabled:bg-zinc-300 disabled:cursor-not-allowed text-white rounded-xl transition-all shadow-md hover:shadow-lg font-bold text-[12px] uppercase tracking-widest flex items-center justify-center gap-2"
+              >
+                <Mail size={16} />
+                {villa.status === 'Available' ? 'Enquire Now' : 'Not Available'}
+              </button>
             </div>
           </div>
 
           {/* Image Display */}
-          <div className="flex-1 bg-[#f8f8f6] p-4 md:p-8 flex items-center justify-center overflow-auto">
-            <div className="relative w-full max-w-3xl aspect-[4/3] bg-white rounded-xl shadow-inner border border-zinc-100 flex items-center justify-center overflow-hidden">
+          <div className="flex-1 bg-[#f8f8f6] p-4 md:p-12 flex items-center justify-center overflow-auto">
+            <div className="relative w-full max-w-4xl aspect-[4/3] bg-white rounded-xl shadow-inner border border-zinc-100 flex items-center justify-center overflow-hidden">
               <img 
                 key={filePath}
                 src={filePath} 
@@ -386,8 +494,8 @@ function FloorPlanModal({ villaNumber, onClose }: { villaNumber: number; onClose
               />
               
               {/* Overlay info */}
-              <div className="absolute bottom-4 left-4 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-zinc-200/50 shadow-sm pointer-events-none">
-                <p className="text-[9px] font-bold text-[#3d4a35] uppercase tracking-widest leading-none">
+              <div className="absolute bottom-6 left-6 bg-white/90 backdrop-blur-md px-4 py-2 rounded-xl border border-zinc-200/50 shadow-lg pointer-events-none">
+                <p className="text-[10px] font-bold text-[#3d4a35] uppercase tracking-[0.2em] leading-none">
                   Plan: {dimensionStr.toUpperCase()} | {floor.toUpperCase()}
                 </p>
               </div>
@@ -396,6 +504,236 @@ function FloorPlanModal({ villaNumber, onClose }: { villaNumber: number; onClose
         </div>
       </motion.div>
     </motion.div>
+  );
+}
+
+function EnquiryModal({ villa, onClose, onSuccess }: { villa: Villa; onClose: () => void; onSuccess: () => void }) {
+  const [formData, setFormData] = useState({
+    name: auth.currentUser?.displayName || '',
+    email: auth.currentUser?.email || '',
+    phone: '',
+    message: ''
+  });
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      await enquiryService.createEnquiry({
+        villaId: villa.id,
+        userName: formData.name,
+        userEmail: formData.email,
+        userPhone: formData.phone,
+        message: formData.message
+      });
+      setSuccess(true);
+      setTimeout(() => {
+        onSuccess();
+      }, 2000);
+    } catch (err: any) {
+      setError('Failed to send enquiry. Please try again.');
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[2500] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden p-8"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {success ? (
+          <div className="text-center py-10 space-y-4">
+            <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle2 size={32} />
+            </div>
+            <h2 className="text-2xl font-serif font-bold text-[#3d4a35]">Enquiry Sent!</h2>
+            <p className="text-zinc-500 text-[13px]">We have received your enquiry for Villa {villa.number.toString().padStart(2, '0')}. Our team will contact you shortly.</p>
+          </div>
+        ) : (
+          <>
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h2 className="text-2xl font-serif font-bold text-[#3d4a35] tracking-tight">Enquire Now</h2>
+                <p className="text-[11px] font-bold text-zinc-400 uppercase tracking-widest mt-1">Villa {villa.number.toString().padStart(2, '0')}</p>
+              </div>
+              <button 
+                onClick={onClose}
+                className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Name</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300" size={18} />
+                  <input 
+                    required
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({...formData, name: e.target.value})}
+                    className="w-full bg-zinc-50 border border-zinc-100 rounded-xl py-3.5 pl-12 pr-4 text-[13px] focus:bg-white focus:ring-2 focus:ring-[#637d5b]/20 focus:border-[#637d5b] transition-all"
+                    placeholder="Your Full Name"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300" size={18} />
+                  <input 
+                    required
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({...formData, email: e.target.value})}
+                    className="w-full bg-zinc-50 border border-zinc-100 rounded-xl py-3.5 pl-12 pr-4 text-[13px] focus:bg-white focus:ring-2 focus:ring-[#637d5b]/20 focus:border-[#637d5b] transition-all"
+                    placeholder="your@email.com"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Phone (Optional)</label>
+                <div className="relative">
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-300" size={18} />
+                  <input 
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                    className="w-full bg-zinc-50 border border-zinc-100 rounded-xl py-3.5 pl-12 pr-4 text-[13px] focus:bg-white focus:ring-2 focus:ring-[#637d5b]/20 focus:border-[#637d5b] transition-all"
+                    placeholder="+91 00000 00000"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest ml-1">Message</label>
+                <textarea 
+                  value={formData.message}
+                  onChange={(e) => setFormData({...formData, message: e.target.value})}
+                  className="w-full bg-zinc-50 border border-zinc-100 rounded-xl py-3.5 px-4 text-[13px] h-28 resize-none focus:bg-white focus:ring-2 focus:ring-[#637d5b]/20 focus:border-[#637d5b] transition-all"
+                  placeholder="Tell us about your requirements..."
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 bg-red-50 text-red-500 text-[11px] flex items-center gap-2 rounded-lg">
+                  <AlertCircle size={14} />
+                  {error}
+                </div>
+              )}
+
+              <button 
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 bg-[#3d4a35] hover:bg-[#2d3627] text-white rounded-xl transition-all shadow-lg font-bold text-[12px] uppercase tracking-widest flex items-center justify-center gap-2 mt-4"
+              >
+                {loading ? <Loader2 className="animate-spin" size={18} /> : 'Submit Enquiry'}
+              </button>
+            </form>
+          </>
+        )}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+function LoginPage() {
+  const [loading, setLoading] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setAccessDenied(false);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const email = result.user.email;
+      
+      if (email && !ALLOWED_EMAILS.includes(email.toLowerCase())) {
+        await auth.signOut();
+        setAccessDenied(true);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-[#f3f4f1] p-6">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-[440px] bg-white rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-12 flex flex-col items-center"
+      >
+        <div className="w-20 h-20 bg-[#e9f2ee] rounded-full flex items-center justify-center mb-10">
+          <MapIcon className="text-[#094f39]" size={36} />
+        </div>
+
+        <h2 className="text-[#094f39] text-[24px] font-bold tracking-[0.1em] uppercase mb-8 text-center">{accessDenied ? 'Access Denied' : 'Confidential Map'}</h2>
+
+        {accessDenied ? (
+          <div className="bg-red-50 rounded-[24px] p-8 mb-10 text-center text-red-600 text-[14px] leading-relaxed border border-red-100">
+            <AlertCircle className="mx-auto mb-3" size={24} />
+            Your account does not have permission to access this resource. Please contact the administrator.
+          </div>
+        ) : (
+          <div className="bg-[#f8f9f8] rounded-[24px] p-8 mb-10 text-center text-[#556d64] text-[15px] leading-relaxed">
+            This is a confidential architectural resource. Please enter your company email to proceed.
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="w-full space-y-8">
+          {!accessDenied && (
+            <div className="relative">
+              <input
+                type="email"
+                placeholder="Email Address"
+                disabled
+                className="w-full px-6 py-5 rounded-xl border border-zinc-200 bg-white text-[#3d4a35] placeholder:text-zinc-300 focus:outline-none transition-all cursor-not-allowed"
+              />
+              <div className="absolute right-4 top-1/2 -translate-y-1/2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              </div>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-5 bg-[#094f39] hover:bg-[#073d2c] text-white rounded-2xl font-bold text-[16px] transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3"
+          >
+            {loading ? <Loader2 className="animate-spin" size={22} /> : accessDenied ? 'Retry with different account' : 'Sign in'}
+          </button>
+        </form>
+
+        <div className="mt-12 w-full text-center">
+          <p className="text-[11px] font-bold text-zinc-300 uppercase tracking-[0.2em] opacity-80">Vianaar Internal Security</p>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -410,22 +748,22 @@ function RenderModal({ category, onClose }: { category: string; onClose: () => v
     },
     "2 BHK": { 
       title: "2 BHK Perspective", 
-      stems: ["2bhk_balcony", "2bhk_ext", "2bhk_int"] 
+      stems: ["2bhk_balcony", "2bhk_exterior", "2bhk_facade"] 
     },
     "3 BHK": { 
       title: "3 BHK Perspective", 
-      stems: ["3bhk_ext_1", "3bhk_ext_2", "3bhk_int"] 
+      stems: ["3bhk_ext_1", "3bhk_ext_2", "3bhk_terrace"] 
     },
     "4 BHK": { 
       title: "4 BHK Perspective", 
-      stems: ["4bhk_ext", "4bhk_pool", "4bhk_int"] 
+      stems: ["4bhk_balcony", "4bhk_exterior", "4bhk_facade", "4bhk_terrace"] 
     }
   };
 
   const currentCategory = renderData[category] || { title: category, stems: [category.toLowerCase().replace(' ', '_')] };
   const images = currentCategory.stems;
   const currentImageStem = images[currentIndex];
-  const fileName = `${currentImageStem}.webp`;
+  const fileName = `${currentImageStem}.jpg`;
   const filePath = `/renders/${fileName}`;
 
   return (
@@ -507,7 +845,7 @@ function RenderModal({ category, onClose }: { category: string; onClose: () => v
               className={`relative w-24 aspect-[4/3] rounded-lg overflow-hidden border-2 transition-all ${idx === currentIndex ? 'border-[#637d5b] scale-105 shadow-lg' : 'border-transparent opacity-60 hover:opacity-100'}`}
             >
               <img 
-                src={`/renders/${stem}.webp`}
+                src={`/renders/${stem}.jpg`}
                 alt={`Thumbnail ${idx + 1}`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
@@ -527,26 +865,37 @@ function RenderModal({ category, onClose }: { category: string; onClose: () => v
 
 function Sidebar({ 
   map, 
+  user,
+  villas,
   isMobileExpanded, 
   setIsMobileExpanded,
   activeFilter,
   setActiveFilter,
-  selectedVilla,
-  setSelectedVilla,
+  selectedVillaId,
+  setSelectedVillaId,
   setSelectedRenderCategory
 }: { 
   map: L.Map | null; 
+  user: FirebaseUser | null;
+  villas: Villa[];
   isMobileExpanded: boolean; 
   setIsMobileExpanded: (v: boolean) => void;
   activeFilter: string;
   setActiveFilter: (f: any) => void;
-  selectedVilla: number | null;
-  setSelectedVilla: (v: number | null) => void;
+  selectedVillaId: string | null;
+  setSelectedVillaId: (v: string | null) => void;
   setSelectedRenderCategory: (c: string | null) => void;
 }) {
-  const floorPlans = Array.from({ length: 48 }, (_, i) => i + 1);
-
   const filters = ['All', 'Restaurants', 'Education', 'Tourist Spots', 'Sports'];
+
+  const handleLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <div className={`absolute bottom-0 left-0 right-0 md:left-6 md:top-6 md:bottom-6 md:w-[360px] md:rounded-2xl z-[1000] flex flex-col overflow-hidden pointer-events-auto transition-all duration-500 ease-in-out ${isMobileExpanded ? 'h-[90vh]' : 'h-24 md:h-auto'} bg-[#fdfdfb] md:shadow-2xl border-none`}>
@@ -554,13 +903,18 @@ function Sidebar({
       <div className="p-6 pb-2 md:p-8 md:pb-4 shrink-0 bg-white border-b border-zinc-100">
         <div className="flex justify-between items-start mb-1">
           <h1 className="text-[28px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase">La Isla</h1>
-          <button 
-            onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-            className="md:hidden text-zinc-400 p-1"
-          >
-            <div className="w-5 h-0.5 bg-zinc-400 mb-1" />
-            <div className="w-5 h-0.5 bg-zinc-400" />
-          </button>
+          <div className="flex items-center gap-3">
+             {user && (
+               <img src={user.photoURL || ''} alt={user.displayName || ''} className="w-8 h-8 rounded-full border-2 border-[#637d5b]/20" />
+             )}
+            <button 
+                onClick={() => setIsMobileExpanded(!isMobileExpanded)}
+                className="md:hidden text-zinc-400 p-1"
+            >
+                <div className="w-5 h-0.5 bg-zinc-400 mb-1" />
+                <div className="w-5 h-0.5 bg-zinc-400" />
+            </button>
+          </div>
         </div>
         <p className="text-[10px] md:text-[11px] font-medium tracking-[0.1em] text-zinc-400 uppercase">Architectural Planning & Floor Plans</p>
       </div>
@@ -574,21 +928,35 @@ function Sidebar({
 
             {/* Select Villa Section */}
             <div className="space-y-6">
-              <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Select Villa</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Select Villa</h3>
+                <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">{villas.length} Enventories</span>
+              </div>
               <div className="grid grid-cols-5 gap-3">
-                {floorPlans.map((num) => (
+                {villas.sort((a, b) => a.number - b.number).map((villa) => (
                   <button
-                    key={num}
-                    onClick={() => setSelectedVilla(num)}
-                    className={`aspect-square flex items-center justify-center text-[13px] font-bold rounded-lg border transition-all ${
-                      selectedVilla === num
+                    key={villa.id}
+                    onClick={() => setSelectedVillaId(villa.id)}
+                    className={`aspect-square relative flex items-center justify-center text-[13px] font-bold rounded-lg border transition-all ${
+                      selectedVillaId === villa.id
                         ? 'bg-[#637d5b] border-[#637d5b] text-white shadow-lg scale-110 z-10'
-                        : 'bg-white border-zinc-200 text-zinc-300 hover:border-[#637d5b]/40 hover:text-[#637d5b]'
+                        : 'bg-white border-zinc-200 text-zinc-400 hover:border-[#637d5b]/40 hover:text-[#637d5b]'
                     }`}
                   >
-                    {num.toString().padStart(2, '0')}
+                    {villa.number.toString().padStart(2, '0')}
+                    {villa.status === 'Sold' && (
+                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-400 border border-white rounded-full" />
+                    )}
+                    {villa.status === 'Reserved' && (
+                        <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-400 border border-white rounded-full" />
+                    )}
                   </button>
                 ))}
+                {villas.length === 0 && (
+                  <div className="col-span-5 py-4 text-center">
+                    <p className="text-[11px] text-zinc-300 font-medium italic">Loading inventory...</p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -644,9 +1012,11 @@ function Sidebar({
 
 export default function App() {
   const [map, setMap] = useState<L.Map | null>(null);
+  const [user, setUser] = useState<FirebaseUser | null>(null);
+  const [villas, setVillas] = useState<Villa[]>([]);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Restaurants' | 'Education' | 'Tourist Spots' | 'Sports'>('All');
-  const [selectedVilla, setSelectedVilla] = useState<number | null>(null);
+  const [selectedVillaId, setSelectedVillaId] = useState<string | null>(null);
   const [selectedRenderCategory, setSelectedRenderCategory] = useState<string | null>(null);
 
   const [showOverlay] = useState(true);
@@ -657,24 +1027,112 @@ export default function App() {
     [14.950834104853687, 74.05402194226501]
   ]);
 
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (u) => {
+        if (u) {
+            // Check access list
+            const email = u.email;
+            if (email && !ALLOWED_EMAILS.includes(email.toLowerCase())) {
+                await auth.signOut();
+                setUser(null);
+                return;
+            }
+
+            setUser(u);
+            // Save user profile if not exists
+            const userRef = doc(db, 'users', u.uid);
+            getDocs(query(collection(db, 'users'), where('email', '==', u.email))).then(snap => {
+                if (snap.empty) {
+                    setDoc(userRef, {
+                        email: u.email,
+                        displayName: u.displayName,
+                        photoURL: u.photoURL,
+                        role: 'user'
+                    });
+                }
+            });
+        } else {
+            setUser(null);
+        }
+    });
+
+    // Subscribe to villas
+    const unsubVillas = villaService.subscribeToVillas((data) => {
+        if (data.length === 0) {
+            // If empty, seed some data automatically for this demo
+            seedInitialVillas();
+        }
+        setVillas(data as Villa[]);
+    });
+
+    return () => {
+        unsubscribe();
+        unsubVillas();
+    };
+  }, []);
+
+  const seedInitialVillas = async () => {
+    console.log('Seeding initial villas...');
+    const villaCollection = collection(db, 'villas');
+    const existing = await getDocs(villaCollection);
+    if (!existing.empty) return;
+
+    const dummyData = [
+        { number: 1, type: '4 BHK', status: 'Available', sqft: 4500, description: 'Premium 4BHK with private pool and garden.' },
+        { number: 2, type: '4 BHK', status: 'Sold', sqft: 4200, description: 'Luxury 4BHK with forest views.' },
+        { number: 3, type: '3 BHK', status: 'Available', sqft: 3200, description: 'Spacious 3BHK with modern amenities.' },
+        { number: 4, type: '3 BHK', status: 'Reserved', sqft: 3100, description: 'Cozy 3BHK with large balconies.' },
+        { number: 5, type: '2 BHK', status: 'Available', sqft: 2200, description: 'Elegant 2BHK perfect for small families.' },
+        { number: 6, type: '4 BHK', status: 'Available', sqft: 4600, description: 'Ultra-luxury villa with expansive deck.' },
+        { number: 7, type: '3 BHK', status: 'Available', sqft: 3400, description: 'Modern 3BHK with panoramic views.' },
+        { number: 8, type: '2 BHK', status: 'Sold', sqft: 2300, description: 'Compact yet luxurious 2BHK living.' },
+    ];
+
+    // Seed more villas to fill the 24 slots we have assets for
+    for (let i = 1; i <= 24; i++) {
+        if (i === 13) continue; // Skip 13
+        const villaId = `villa_${i.toString().padStart(2, '0')}`;
+        const existingInfo = dummyData.find(d => d.number === i);
+        const data = existingInfo || {
+            number: i,
+            type: i % 3 === 0 ? '4 BHK' : i % 2 === 0 ? '3 BHK' : '2 BHK',
+            status: 'Available',
+            sqft: 2000 + (i * 100),
+            description: `Beautiful Villa ${i} in the heart of South Goa.`
+        };
+        await setDoc(doc(db, 'villas', villaId), data);
+    }
+  };
+
+  const selectedVilla = useMemo(() => {
+    if (!selectedVillaId) return null;
+    return villas.find(v => v.id === selectedVillaId) || null;
+  }, [selectedVillaId, villas]);
+
   return (
     <div className="relative h-screen w-full bg-[#f4f4f4] overflow-hidden">
+      <AnimatePresence>
+        {!user && <LoginPage />}
+      </AnimatePresence>
+
       <Sidebar 
         map={map} 
+        user={user}
+        villas={villas}
         isMobileExpanded={isMobileExpanded} 
         setIsMobileExpanded={setIsMobileExpanded}
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}
-        selectedVilla={selectedVilla}
-        setSelectedVilla={setSelectedVilla}
+        selectedVillaId={selectedVillaId}
+        setSelectedVillaId={setSelectedVillaId}
         setSelectedRenderCategory={setSelectedRenderCategory}
       />
       
       <AnimatePresence>
         {selectedVilla !== null && (
           <FloorPlanModal 
-            villaNumber={selectedVilla} 
-            onClose={() => setSelectedVilla(null)} 
+            villa={selectedVilla} 
+            onClose={() => setSelectedVillaId(null)} 
           />
         )}
         {selectedRenderCategory !== null && (

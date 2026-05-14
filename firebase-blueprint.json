@@ -1,0 +1,60 @@
+{
+  "entities": {
+    "villas": {
+      "title": "Villa",
+      "description": "Details of individual villas in the project",
+      "type": "object",
+      "properties": {
+        "number": { "type": "number", "description": "Villa number (e.g., 1 to 48)" },
+        "type": { "type": "string", "enum": ["2 BHK", "3 BHK", "4 BHK"], "description": "Type of villa" },
+        "status": { "type": "string", "enum": ["Available", "Sold", "Reserved"], "description": "Current availability status" },
+        "price": { "type": "number", "description": "Price in INR" },
+        "sqft": { "type": "number", "description": "Square footage of the villa" },
+        "description": { "type": "string", "description": "Brief description of the villa" },
+        "image": { "type": "string", "description": "Primary render image stem" }
+      },
+      "required": ["number", "type", "status"]
+    },
+    "enquiries": {
+      "title": "Enquiry",
+      "description": "User enquiries for specific villas",
+      "type": "object",
+      "properties": {
+        "villaId": { "type": "string", "description": "ID of the villa being enquired about" },
+        "userName": { "type": "string", "description": "Name of the user" },
+        "userEmail": { "type": "string", "format": "email", "description": "Email of the user" },
+        "userPhone": { "type": "string", "description": "Phone number of the user" },
+        "message": { "type": "string", "description": "Enquiry message" },
+        "status": { "type": "string", "enum": ["New", "Contacted", "Closed"], "description": "Status of the enquiry" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the enquiry was made" }
+      },
+      "required": ["villaId", "userName", "userEmail", "createdAt"]
+    },
+    "users": {
+        "title": "User",
+        "description": "User profile data",
+        "type": "object",
+        "properties": {
+            "displayName": { "type": "string" },
+            "email": { "type": "string" },
+            "photoURL": { "type": "string" },
+            "role": { "type": "string", "enum": ["user", "admin"] }
+        },
+        "required": ["email"]
+    }
+  },
+  "firestore": {
+    "/villas/{villaId}": {
+      "schema": "villas",
+      "description": "Collection of all villas"
+    },
+    "/enquiries/{enquiryId}": {
+      "schema": "enquiries",
+      "description": "Collection of user enquiries"
+    },
+    "/users/{userId}": {
+      "schema": "users",
+      "description": "User profiles"
+    }
+  }
+}
