@@ -711,8 +711,7 @@ function LoginPage() {
               <input
                 type="email"
                 placeholder="Email Address"
-                disabled
-                className="w-full px-6 py-5 rounded-xl border border-zinc-200 bg-white text-[#3d4a35] placeholder:text-zinc-300 focus:outline-none transition-all cursor-not-allowed"
+                className="w-full px-6 py-5 rounded-xl border border-zinc-200 bg-white text-[#3d4a35] placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#094f39]/10 focus:border-[#094f39] transition-all"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
