@@ -23,8 +23,10 @@ import {
   RotateCw, 
   RotateCcw,
   MapPin,
-  Navigation
+  Navigation,
+  X
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 
 // South Goa - Exact Site Entry Point
 const ENTRY_POINT: [number, number] = [14.950125, 74.053317];
@@ -280,20 +282,140 @@ function ToSiteButton({ map, className }: { map: L.Map | null; className?: strin
   );
 }
 
+function FloorPlanModal({ villaNumber, onClose }: { villaNumber: number; onClose: () => void }) {
+  const [withDimension, setWithDimension] = useState(true);
+  const [floor, setFloor] = useState<'gf' | 'ff'>('gf');
+
+  const villaStr = villaNumber.toString().padStart(2, '0');
+  const dimensionStr = withDimension ? 'wd' : 'wod';
+  const fileName = `v${villaStr}_${dimensionStr}_${floor}.webp`;
+  const filePath = `/floor-plans/${fileName}`;
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 md:p-8"
+      onClick={onClose}
+    >
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        className="bg-[#fdfdfb] w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modal Header */}
+        <div className="p-6 md:p-8 flex items-center justify-between border-b border-zinc-100 shrink-0">
+          <div>
+            <h2 className="text-[24px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase">Villa {villaStr}</h2>
+            <p className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase mt-1">Floor Plan Perspective</p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-zinc-100 rounded-full transition-colors text-zinc-400"
+          >
+            <X size={24} />
+          </button>
+        </div>
+
+        {/* Modal Body */}
+        <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+          {/* Controls - Mobile Top / Desktop Left */}
+          <div className="p-6 md:p-8 md:w-64 shrink-0 bg-zinc-50/50 border-b md:border-b-0 md:border-r border-zinc-100 flex flex-col gap-8">
+            {/* Dimension Toggle */}
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Dimensions</h3>
+              <div className="flex p-1 bg-zinc-200/50 rounded-xl">
+                <button 
+                  onClick={() => setWithDimension(true)}
+                  className={`flex-1 py-2 text-[11px] font-bold rounded-lg transition-all ${withDimension ? 'bg-white text-[#3d4a35] shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+                >
+                  With
+                </button>
+                <button 
+                  onClick={() => setWithDimension(false)}
+                  className={`flex-1 py-2 text-[11px] font-bold rounded-lg transition-all ${!withDimension ? 'bg-white text-[#3d4a35] shadow-sm' : 'text-zinc-500 hover:text-zinc-700'}`}
+                >
+                  Without
+                </button>
+              </div>
+            </div>
+
+            {/* Floor Toggle */}
+            <div className="space-y-4">
+              <h3 className="text-[10px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Floor Level</h3>
+              <div className="flex flex-col gap-2">
+                <button 
+                  onClick={() => setFloor('gf')}
+                  className={`w-full py-3 px-4 text-[11px] font-bold rounded-xl border transition-all text-left flex justify-between items-center ${floor === 'gf' ? 'bg-[#3d4a35] border-[#3d4a35] text-white shadow-md' : 'bg-white border-zinc-200 text-zinc-400 hover:border-zinc-300'}`}
+                >
+                  Ground Floor
+                  {floor === 'gf' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                </button>
+                <button 
+                  onClick={() => setFloor('ff')}
+                  className={`w-full py-3 px-4 text-[11px] font-bold rounded-xl border transition-all text-left flex justify-between items-center ${floor === 'ff' ? 'bg-[#3d4a35] border-[#3d4a35] text-white shadow-md' : 'bg-white border-zinc-200 text-zinc-400 hover:border-zinc-300'}`}
+                >
+                  First Floor
+                  {floor === 'ff' && <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-auto hidden md:block">
+              <p className="text-[9px] text-zinc-400 leading-relaxed italic">
+                Files are loaded from:<br/>
+                <span className="font-mono text-[8px] break-all">{filePath}</span>
+              </p>
+            </div>
+          </div>
+
+          {/* Image Display */}
+          <div className="flex-1 bg-[#f8f8f6] p-4 md:p-8 flex items-center justify-center overflow-auto">
+            <div className="relative w-full max-w-3xl aspect-[4/3] bg-white rounded-xl shadow-inner border border-zinc-100 flex items-center justify-center overflow-hidden">
+              <img 
+                key={filePath}
+                src={filePath} 
+                alt={`Villa ${villaStr} ${floor === 'gf' ? 'Ground' : 'First'} Floor Plan`}
+                className="max-w-full max-h-full object-contain p-4 transition-all duration-700 ease-in-out"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = 'https://placehold.co/800x600/fdfdfb/3d4a35?text=Floor+Plan+Not+Found\\n' + fileName;
+                }}
+              />
+              
+              {/* Overlay info */}
+              <div className="absolute bottom-4 left-4 bg-white/80 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-zinc-200/50 shadow-sm pointer-events-none">
+                <p className="text-[9px] font-bold text-[#3d4a35] uppercase tracking-widest leading-none">
+                  Plan: {dimensionStr.toUpperCase()} | {floor.toUpperCase()}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 function Sidebar({ 
   map, 
   isMobileExpanded, 
   setIsMobileExpanded,
   activeFilter,
-  setActiveFilter
+  setActiveFilter,
+  selectedVilla,
+  setSelectedVilla
 }: { 
   map: L.Map | null; 
   isMobileExpanded: boolean; 
   setIsMobileExpanded: (v: boolean) => void;
   activeFilter: string;
   setActiveFilter: (f: any) => void;
+  selectedVilla: number | null;
+  setSelectedVilla: (v: number | null) => void;
 }) {
-  const [selectedVilla, setSelectedVilla] = useState<number | null>(null);
   const floorPlans = Array.from({ length: 48 }, (_, i) => i + 1);
 
   const filters = ['All', 'Restaurants', 'Education', 'Tourist Spots', 'Sports'];
@@ -322,53 +444,25 @@ function Sidebar({
           
           <div className="h-px bg-zinc-100 mb-8" />
 
-          {/* Select Villa Section */}
-          <div className="space-y-6">
-            <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Select Villa</h3>
-            <div className="grid grid-cols-5 gap-3">
-              {floorPlans.map((num) => (
-                <button
-                  key={num}
-                  onClick={() => setSelectedVilla(num === selectedVilla ? null : num)}
-                  className={`aspect-square flex items-center justify-center text-[13px] font-bold rounded-lg border transition-all ${
-                    selectedVilla === num
-                      ? 'bg-[#637d5b] border-[#637d5b] text-white shadow-lg scale-110 z-10'
-                      : 'bg-white border-zinc-200 text-zinc-300 hover:border-[#637d5b]/40 hover:text-[#637d5b]'
-                  }`}
-                >
-                  {num.toString().padStart(2, '0')}
-                </button>
-              ))}
-            </div>
-
-            {selectedVilla !== null && (
-              <div className="p-4 bg-[#f2f1e6] rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
-                <div className="flex items-center justify-between">
-                  <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Villa {selectedVilla.toString().padStart(2, '0')} Plans</p>
-                  <span className="text-[9px] font-medium text-[#637d5b] bg-white px-2 py-0.5 rounded-full border border-[#637d5b]/20">With Dimensions</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <a 
-                    href={`/floor-plans/G.F_Villa-${selectedVilla.toString().padStart(2, '0')}_WD-01.jpg`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white border border-zinc-200 rounded-lg text-[11px] font-bold text-[#3d4a35] hover:border-[#637d5b] hover:text-[#637d5b] transition-all group"
+            {/* Select Villa Section */}
+            <div className="space-y-6">
+              <h3 className="text-[11px] font-bold tracking-[0.2em] text-zinc-400 uppercase">Select Villa</h3>
+              <div className="grid grid-cols-5 gap-3">
+                {floorPlans.map((num) => (
+                  <button
+                    key={num}
+                    onClick={() => setSelectedVilla(num)}
+                    className={`aspect-square flex items-center justify-center text-[13px] font-bold rounded-lg border transition-all ${
+                      selectedVilla === num
+                        ? 'bg-[#637d5b] border-[#637d5b] text-white shadow-lg scale-110 z-10'
+                        : 'bg-white border-zinc-200 text-zinc-300 hover:border-[#637d5b]/40 hover:text-[#637d5b]'
+                    }`}
                   >
-                    <span>Ground Floor</span>
-                  </a>
-                  <a 
-                    href={`/floor-plans/F.F_Villa-${selectedVilla.toString().padStart(2, '0')}_WD-01.jpg`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 py-2.5 px-3 bg-white border border-zinc-200 rounded-lg text-[11px] font-bold text-[#3d4a35] hover:border-[#637d5b] hover:text-[#637d5b] transition-all group"
-                  >
-                    <span>First Floor</span>
-                  </a>
-                </div>
-                <p className="text-[9px] text-zinc-400 italic text-center">Note: Ensure files are uploaded to /public/floor-plans/</p>
+                    {num.toString().padStart(2, '0')}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
+            </div>
 
           <div className="h-px bg-zinc-100 mt-8 mb-8" />
 
@@ -423,6 +517,8 @@ export default function App() {
   const [map, setMap] = useState<L.Map | null>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'All' | 'Restaurants' | 'Education' | 'Tourist Spots' | 'Sports'>('All');
+  const [selectedVilla, setSelectedVilla] = useState<number | null>(null);
+
   const [showOverlay] = useState(true);
   const [overlayOpacity] = useState(1);
   const [rotation] = useState(0);
@@ -439,7 +535,18 @@ export default function App() {
         setIsMobileExpanded={setIsMobileExpanded}
         activeFilter={activeFilter}
         setActiveFilter={setActiveFilter}
+        selectedVilla={selectedVilla}
+        setSelectedVilla={setSelectedVilla}
       />
+      
+      <AnimatePresence>
+        {selectedVilla !== null && (
+          <FloorPlanModal 
+            villaNumber={selectedVilla} 
+            onClose={() => setSelectedVilla(null)} 
+          />
+        )}
+      </AnimatePresence>
       
       <div className="absolute right-4 top-4 md:right-6 md:top-6 z-[1000] flex flex-col gap-2 pointer-events-auto">
         <button className="glass-panel w-10 h-10 rounded-xl flex items-center justify-center text-zinc-700 hover:text-brand-primary transition-colors">
