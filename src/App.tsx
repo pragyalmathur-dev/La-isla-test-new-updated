@@ -953,7 +953,7 @@ function Sidebar({
                 <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest">{villas.length} Inventories</span>
               </div>
               <div className="grid grid-cols-5 gap-3">
-                {villas.sort((a, b) => a.number - b.number).map((villa) => (
+                {villas.map((villa) => (
                   <button
                     key={villa.id}
                     onClick={() => setSelectedVillaId(villa.id)}
@@ -972,11 +972,6 @@ function Sidebar({
                     )}
                   </button>
                 ))}
-                {villas.length === 0 && (
-                  <div className="col-span-5 py-4 text-center">
-                    <p className="text-[11px] text-zinc-300 font-medium italic">Loading inventory...</p>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -1052,10 +1047,26 @@ export default function App() {
     // Subscribe to villas immediately as they are public in rules
     const unsubVillas = villaService.subscribeToVillas((data) => {
         // If the inventory is missing or incomplete, trigger seeding
-        // Expecting 23 villas (1-24, skipping 13)
-        if (data.length < 23) {
+        // Expecting 47 villas (1-48, skipping 13)
+        if (data.length < 47) {
             seedInitialVillas();
         }
+
+        // Sync status for Sold villas
+        const soldVillas = [5, 6, 8, 9, 11, 18, 22, 23, 24, 27, 28, 30];
+        const reservedVillas = [10, 16, 42, 46, 47, 48];
+
+        data.forEach(v => {
+          const villa = v as Villa;
+          let targetStatus: 'Available' | 'Sold' | 'Reserved' = 'Available';
+          if (soldVillas.includes(villa.number)) targetStatus = 'Sold';
+          else if (reservedVillas.includes(villa.number)) targetStatus = 'Reserved';
+          
+          if (villa.status !== targetStatus) {
+            villaService.updateVilla(villa.id, { status: targetStatus });
+          }
+        });
+
         setVillas(data as Villa[]);
     });
 
@@ -1090,34 +1101,26 @@ export default function App() {
     const existing = await getDocs(villaCollection);
     
     // If we already have the full set, don't seed
-    if (existing.size >= 23) return;
+    if (existing.size >= 47) return;
 
-    const dummyData = [
-        { number: 1, type: '4 BHK', status: 'Available', sqft: 4500, description: 'Premium 4BHK with private pool and garden.' },
-        { number: 2, type: '4 BHK', status: 'Sold', sqft: 4200, description: 'Luxury 4BHK with forest views.' },
-        { number: 3, type: '3 BHK', status: 'Available', sqft: 3200, description: 'Spacious 3BHK with modern amenities.' },
-        { number: 4, type: '3 BHK', status: 'Reserved', sqft: 3100, description: 'Cozy 3BHK with large balconies.' },
-        { number: 5, type: '2 BHK', status: 'Available', sqft: 2200, description: 'Elegant 2BHK perfect for small families.' },
-        { number: 6, type: '4 BHK', status: 'Available', sqft: 4600, description: 'Ultra-luxury villa with expansive deck.' },
-        { number: 7, type: '3 BHK', status: 'Available', sqft: 3400, description: 'Modern 3BHK with panoramic views.' },
-        { number: 8, type: '2 BHK', status: 'Sold', sqft: 2300, description: 'Compact yet luxurious 2BHK living.' },
-    ];
+    const soldVillas = [5, 6, 8, 9, 11, 18, 22, 23, 24, 27, 28, 30];
+    const reservedVillas = [10, 16, 42, 46, 47, 48];
 
     // Seed missing villas to fill the slots
     const seedPromises = [];
-    for (let i = 1; i <= 24; i++) {
+    for (let i = 1; i <= 48; i++) {
         if (i === 13) continue; // Skip 13
         const villaId = `villa_${i.toString().padStart(2, '0')}`;
         
-        // Check if this specific villa already exists in the fetched snap
-        const alreadyExists = existing.docs.some(doc => doc.id === villaId);
-        if (alreadyExists) continue;
+        // Determine status
+        let status: 'Available' | 'Sold' | 'Reserved' = 'Available';
+        if (soldVillas.includes(i)) status = 'Sold';
+        else if (reservedVillas.includes(i)) status = 'Reserved';
 
-        const existingInfo = dummyData.find(d => d.number === i);
-        const data = existingInfo || {
+        const data = {
             number: i,
-            type: i % 3 === 0 ? '4 BHK' : i % 2 === 0 ? '3 BHK' : '2 BHK',
-            status: 'Available',
+            type: i % 5 === 0 ? '4 BHK' : i % 3 === 0 ? '3 BHK' : '2 BHK',
+            status: status,
             sqft: 2000 + (i * 100),
             description: `Beautiful Villa ${i} in the heart of South Goa.`
         };
@@ -1130,10 +1133,29 @@ export default function App() {
     }
   };
 
+  const allVillas = useMemo(() => {
+    const base: Villa[] = [];
+    for (let i = 1; i <= 48; i++) {
+      if (i === 13) continue;
+      const villaId = `villa_${i.toString().padStart(2, '0')}`;
+      const realtimeVilla = villas.find(v => v.id === villaId);
+      
+      base.push(realtimeVilla || {
+        id: villaId,
+        number: i,
+        status: 'Available',
+        type: i % 5 === 0 ? '4 BHK' : i % 3 === 0 ? '3 BHK' : '2 BHK',
+        sqft: 2000 + (i * 100),
+        description: `Beautiful Villa ${i} in the heart of South Goa.`
+      });
+    }
+    return base;
+  }, [villas]);
+
   const selectedVilla = useMemo(() => {
     if (!selectedVillaId) return null;
-    return villas.find(v => v.id === selectedVillaId) || null;
-  }, [selectedVillaId, villas]);
+    return allVillas.find(v => v.id === selectedVillaId) || null;
+  }, [selectedVillaId, allVillas]);
 
   return (
     <div className="relative h-screen w-full bg-[#f4f4f4] overflow-hidden">
@@ -1144,7 +1166,7 @@ export default function App() {
       <Sidebar 
         map={map} 
         user={user}
-        villas={villas}
+        villas={allVillas}
         isMobileExpanded={isMobileExpanded} 
         setIsMobileExpanded={setIsMobileExpanded}
         activeFilter={activeFilter}

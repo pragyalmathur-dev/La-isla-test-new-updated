@@ -95,6 +95,16 @@ export const villaService = {
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, path);
     });
+  },
+
+  async updateVilla(villaId: string, data: any) {
+    const path = `villas/${villaId}`;
+    try {
+      const docRef = doc(db, 'villas', villaId);
+      await updateDoc(docRef, { ...data, updatedAt: serverTimestamp() });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, path);
+    }
   }
 };
 
