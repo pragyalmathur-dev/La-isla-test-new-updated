@@ -410,24 +410,6 @@ function FloorPlanModal({ villa, onClose }: { villa: Villa; onClose: () => void 
           {/* Details & Controls - Mobile Top / Desktop Left */}
           <div className="p-6 md:p-8 md:w-80 shrink-0 bg-zinc-50/50 border-b md:border-b-0 md:border-r border-zinc-100 flex flex-col gap-6 overflow-y-auto">
             
-            {/* Villa Specs */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 bg-white rounded-xl border border-zinc-100 shadow-sm">
-                <p className="text-[9px] font-bold tracking-widest text-zinc-400 uppercase mb-1">Type</p>
-                <p className="text-[13px] font-serif font-bold text-[#3d4a35]">{villa.type}</p>
-              </div>
-              <div className="p-3 bg-white rounded-xl border border-zinc-100 shadow-sm">
-                <p className="text-[9px] font-bold tracking-widest text-zinc-400 uppercase mb-1">Area</p>
-                <p className="text-[13px] font-serif font-bold text-[#3d4a35]">{villa.sqft || '—'} sq.ft</p>
-              </div>
-            </div>
-
-            {villa.description && (
-              <p className="text-[11px] text-zinc-500 leading-relaxed">
-                {villa.description}
-              </p>
-            )}
-
             <div className="h-px bg-zinc-200/50" />
 
             {/* Dimension Toggle */}
