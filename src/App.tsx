@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   MapContainer, 
   TileLayer, 
@@ -85,7 +85,9 @@ const ALLOWED_EMAILS = [
   'bibek.sen@vianaar.com',
   'varun.nagpal@vianaar.com',
   'naina.nagpal@vianaar.com',
-  'pragyalmathur@gmail.com' // Current user email
+  'pragyalmathur@gmail.com',
+  'vianaar.platform@gmail.com',
+  'admin@vianaar.com'
 ];
 
 const NH66_PATH: [number, number][] = [
@@ -682,36 +684,42 @@ function LoginPage({ onAuthorize }: { onAuthorize: (email: string) => void }) {
     }, 800);
   };
 
+  const handleTryAgain = () => {
+    setAccessDenied(false);
+    setEmailInput('');
+    setError(null);
+  };
+
   return (
-    <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-[#f3f4f1] p-6">
+    <div className="fixed inset-0 z-[5000] flex items-center justify-center bg-[#f3f4f1] p-6 overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-[440px] bg-white rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-12 flex flex-col items-center"
+        className="w-full max-w-[440px] bg-white rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-8 md:p-12 flex flex-col items-center"
       >
-        <div className="w-20 h-20 bg-[#e9f2ee] rounded-full flex items-center justify-center mb-10">
+        <div className="w-16 h-16 md:w-20 md:h-20 bg-[#e9f2ee] rounded-full flex items-center justify-center mb-8 md:mb-10">
           <MapIcon className="text-[#094f39]" size={36} />
         </div>
 
-        <h2 className="text-[#094f39] text-[24px] font-bold tracking-[0.1em] uppercase mb-8 text-center">{accessDenied ? 'Access Denied' : 'Confidential Map'}</h2>
+        <h2 className="text-[#094f39] text-[20px] md:text-[24px] font-bold tracking-[0.1em] uppercase mb-6 md:mb-8 text-center">{accessDenied ? 'Access Denied' : 'Confidential Map'}</h2>
 
         {accessDenied ? (
-          <div className="bg-red-50 rounded-[24px] p-8 mb-10 text-center text-red-600 text-[14px] leading-relaxed border border-red-100">
+          <div className="bg-red-50 rounded-[24px] p-6 md:p-8 mb-8 md:mb-10 text-center text-red-600 text-[13px] md:text-[14px] leading-relaxed border border-red-100 w-full">
             <AlertCircle className="mx-auto mb-3" size={24} />
             Your email does not have permission to access this resource. Please contact the administrator.
           </div>
         ) : error ? (
-          <div className="bg-amber-50 rounded-[24px] p-8 mb-10 text-center text-amber-700 text-[14px] leading-relaxed border border-amber-100">
+          <div className="bg-amber-50 rounded-[24px] p-6 md:p-8 mb-8 md:mb-10 text-center text-amber-700 text-[13px] md:text-[14px] leading-relaxed border border-amber-100 w-full">
             <AlertCircle className="mx-auto mb-3" size={24} />
             {error}
           </div>
         ) : (
-          <div className="bg-[#f8f9f8] rounded-[24px] p-8 mb-10 text-center text-[#556d64] text-[15px] leading-relaxed">
+          <div className="bg-[#f8f9f8] rounded-[24px] p-6 md:p-8 mb-8 md:mb-10 text-center text-[#556d64] text-[14px] md:text-[15px] leading-relaxed w-full">
             This is a confidential architectural resource. Please enter your email to proceed.
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="w-full space-y-8">
+        <form onSubmit={handleSubmit} className="w-full space-y-6 md:space-y-8">
           {!accessDenied && !error && (
             <div className="relative">
               <input
@@ -720,7 +728,7 @@ function LoginPage({ onAuthorize }: { onAuthorize: (email: string) => void }) {
                 value={emailInput}
                 onChange={(e) => setEmailInput(e.target.value)}
                 placeholder="Email Address"
-                className="w-full px-6 py-5 rounded-xl border border-zinc-200 bg-white text-[#3d4a35] placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#094f39]/10 focus:border-[#094f39] transition-all"
+                className="w-full px-5 py-4 md:px-6 md:py-5 rounded-xl border border-zinc-200 bg-white text-[#3d4a35] placeholder:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-[#094f39]/10 focus:border-[#094f39] transition-all text-[14px] md:text-[16px]"
               />
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -729,11 +737,12 @@ function LoginPage({ onAuthorize }: { onAuthorize: (email: string) => void }) {
           )}
 
           <button
-            type="submit"
+            type={accessDenied || error ? 'button' : 'submit'}
+            onClick={accessDenied || error ? handleTryAgain : undefined}
             disabled={loading}
-            className="w-full py-5 bg-[#094f39] hover:bg-[#073d2c] text-white rounded-2xl font-bold text-[16px] transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3"
+            className="w-full py-4 md:py-5 bg-[#094f39] hover:bg-[#073d2c] text-white rounded-2xl font-bold text-[14px] md:text-[16px] transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-3"
           >
-            {loading ? <Loader2 className="animate-spin" size={22} /> : (accessDenied || error) ? 'Try with different email' : 'Sign in'}
+            {loading ? <Loader2 className="animate-spin" size={22} /> : (accessDenied || error) ? 'Try with different email' : 'Get Access'}
           </button>
         </form>
 
@@ -898,11 +907,14 @@ function Sidebar({
   const authorizedEmail = localStorage.getItem('la-isla-user-email');
 
   return (
-    <div className={`absolute bottom-0 left-0 right-0 md:left-6 md:top-6 md:bottom-6 md:w-[360px] md:rounded-2xl z-[1000] flex flex-col overflow-hidden pointer-events-auto transition-all duration-500 ease-in-out ${isMobileExpanded ? 'h-[90vh]' : 'h-24 md:h-auto'} bg-[#fdfdfb] md:shadow-2xl border-none`}>
+    <div className={`absolute bottom-0 left-0 right-0 md:left-6 md:top-6 md:bottom-6 md:w-[360px] md:rounded-2xl z-[1000] flex flex-col overflow-hidden pointer-events-auto transition-all duration-500 ease-in-out ${isMobileExpanded ? 'h-[90vh]' : 'h-20 md:h-auto'} bg-[#fdfdfb] md:shadow-2xl border-none`}>
       {/* Brand Header */}
-      <div className="p-6 pb-2 md:p-8 md:pb-4 shrink-0 bg-white border-b border-zinc-100">
-        <div className="flex justify-between items-start mb-1">
-          <h1 className="text-[28px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase">La Isla</h1>
+      <div 
+        className="p-5 md:p-8 shrink-0 bg-white border-b border-zinc-100 cursor-pointer md:cursor-default"
+        onClick={() => { if (window.innerWidth < 768) setIsMobileExpanded(!isMobileExpanded); }}
+      >
+        <div className="flex justify-between items-center mb-1">
+          <h1 className="text-[24px] md:text-[28px] font-serif font-bold text-[#3d4a35] tracking-widest uppercase leading-none">La Isla</h1>
           <div className="flex items-center gap-3">
              {authorizedEmail && (
                <div className="flex items-center gap-2">
@@ -913,17 +925,21 @@ function Sidebar({
                </div>
              )}
             <button 
-                onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-                className="md:hidden text-[#637d5b] p-2 bg-[#637d5b]/10 rounded-full transition-all"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsMobileExpanded(!isMobileExpanded);
+                }}
+                className="md:hidden text-[#637d5b] p-2 bg-[#637d5b]/10 rounded-full transition-all border border-[#637d5b]/20"
+                aria-label={isMobileExpanded ? "Collapse navigation" : "Expand navigation"}
             >
                 {isMobileExpanded ? <ChevronDown size={20} /> : <ChevronUp size={20} className="animate-bounce" />}
             </button>
           </div>
         </div>
-        <p className="text-[10px] md:text-[11px] font-medium tracking-[0.1em] text-zinc-400 uppercase">Architectural Planning & Floor Plans</p>
+        <p className="text-[9px] md:text-[11px] font-medium tracking-[0.1em] text-zinc-400 uppercase">Architectural Planning & Floor Plans</p>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 md:px-8 py-6 space-y-10 scrollbar-hide">
+      <div className={`flex-1 overflow-y-auto px-6 md:px-8 py-6 space-y-10 scrollbar-hide ${!isMobileExpanded ? 'hidden md:block' : ''}`}>
         {/* To Site Section */}
         <div>
           <ToSiteButton map={map} />
@@ -1474,7 +1490,7 @@ export default function App() {
         </MapContainer>
       </div>
 
-      <div className="absolute bottom-28 right-4 md:bottom-6 md:right-6 bg-[#3d4a35]/80 backdrop-blur-sm px-4 py-2 rounded-xl text-[9px] font-medium tracking-wide text-white z-[1000] pointer-events-none max-w-[160px] md:max-w-[200px] text-right border border-white/10 shadow-2xl">
+      <div className="absolute bottom-36 right-4 md:bottom-6 md:right-6 bg-[#3d4a35]/80 backdrop-blur-sm px-4 py-2 rounded-xl text-[9px] font-medium tracking-wide text-white z-[1000] pointer-events-none max-w-[160px] md:max-w-[200px] text-right border border-white/10 shadow-2xl">
         To view the location names, hover over them with your cursor. On mobile, simply tap the location.
       </div>
     </div>
